@@ -87,6 +87,17 @@ async def run_migrations(conn: asyncpg.Connection) -> None:
             continue
         log.info("  applying: %s", sql_file.name)
         sql = sql_file.read_text()
+        # Strip comments and blank lines; skip files with no real SQL
+        stripped = "\n".join(
+            line for line in sql.splitlines()
+            if line.strip() and not line.strip().startswith("--")
+        ).strip()
+        if not stripped:
+            log.info("  ✓ skipped (no SQL statements): %s", sql_file.name)
+            await conn.execute(
+                "INSERT INTO schema_migrations (filename) VALUES ($1)", sql_file.name
+            )
+            continue
         await conn.execute(sql)
         await conn.execute(
             "INSERT INTO schema_migrations (filename) VALUES ($1)", sql_file.name
