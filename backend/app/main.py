@@ -14,6 +14,7 @@ from .sheets import fetch_sheet_data
 from .routers.data import router as data_router
 from .routers.sync import router as sync_router, creds_router
 from .routers.status import router as status_router
+from .routers.chat import router as chat_router
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
@@ -61,6 +62,7 @@ app.include_router(data_router)
 app.include_router(sync_router)
 app.include_router(creds_router)
 app.include_router(status_router)
+app.include_router(chat_router)
 
 # ── Serve React SPA (present only in the production Docker image) ──────────
 if STATIC_DIR.exists():

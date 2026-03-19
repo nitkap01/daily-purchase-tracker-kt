@@ -37,6 +37,7 @@ export default function StatusView() {
   const [logLoading, setLogLoading] = useState(true)
   const [syncing, setSyncing] = useState<'sheet_to_db' | 'db_to_sheet' | null>(null)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pendingSync, setPendingSync] = useState<'sheet_to_db' | 'db_to_sheet' | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -63,6 +64,7 @@ export default function StatusView() {
   }, [])
 
   const handleSync = async (direction: 'sheet_to_db' | 'db_to_sheet') => {
+    setPendingSync(null)
     setSyncing(direction)
     setSyncMsg(null)
     try {
@@ -105,6 +107,37 @@ export default function StatusView() {
 
   return (
     <div className="space-y-4">
+      {/* Confirm dialog */}
+      {pendingSync && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900">Confirm Sync</h2>
+            <p className="text-sm text-gray-600">
+              {pendingSync === 'sheet_to_db'
+                ? 'This will overwrite ALL purchase records in PostgreSQL with data from Google Sheet. Continue?'
+                : 'This will overwrite the Google Sheet with ALL purchase records from PostgreSQL. Continue?'}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setPendingSync(null)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-gray-700 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSync(pendingSync)}
+                className={`px-4 py-2 text-sm font-semibold rounded-lg text-white transition-colors ${
+                  pendingSync === 'sheet_to_db'
+                    ? 'bg-indigo-600 hover:bg-indigo-700'
+                    : 'bg-amber-500 hover:bg-amber-600'
+                }`}
+              >
+                Yes, Sync
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -234,7 +267,7 @@ export default function StatusView() {
 
           {/* Sheet → DB */}
           <button
-            onClick={() => handleSync('sheet_to_db')}
+            onClick={() => setPendingSync('sheet_to_db')}
             disabled={syncing !== null}
             className="w-full flex items-center justify-between gap-3 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 border border-indigo-200 rounded-xl px-4 py-3 transition-colors active:scale-[0.99]"
           >
@@ -254,7 +287,7 @@ export default function StatusView() {
 
           {/* DB → Sheet */}
           <button
-            onClick={() => handleSync('db_to_sheet')}
+            onClick={() => setPendingSync('db_to_sheet')}
             disabled={syncing !== null}
             className="w-full flex items-center justify-between gap-3 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 border border-amber-200 rounded-xl px-4 py-3 transition-colors active:scale-[0.99]"
           >

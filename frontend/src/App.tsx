@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Calendar, Layers, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
+import { Activity, Calendar, Layers, MessageCircle, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
 import DateView from './components/DateView'
 import SearchView from './components/SearchView'
 import AddItemView from './components/AddItemView'
 import InventoryView from './components/InventoryView'
 import CashView from './components/CashView'
 import StatusView from './components/StatusView'
+import ChatView from './components/ChatView'
 import { getHealth, refreshData } from './api'
 import type { HealthData } from './types'
 import { APP_VERSION } from './version'
 
-type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash' | 'status'
+type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash' | 'status' | 'chat'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
@@ -19,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'inventory', label: 'Inventory', icon: <Layers className="w-4 h-4" /> },
   { id: 'cash', label: 'Cash', icon: <PiggyBank className="w-4 h-4" /> },
   { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
+  { id: 'chat', label: 'AI Chat', icon: <MessageCircle className="w-4 h-4" /> },
 ]
 
 export default function App() {
@@ -57,7 +59,8 @@ export default function App() {
 
   const formatRefresh = (iso: string | null): string => {
     if (!iso) return 'Never'
-    return new Date(iso + 'Z').toLocaleString()
+    const d = new Date(iso)  // ISO already has timezone offset from Python
+    return isNaN(d.getTime()) ? iso : d.toLocaleString()
   }
 
   return (
@@ -144,6 +147,7 @@ export default function App() {
         {activeTab === 'inventory' && <InventoryView />}
         {activeTab === 'cash' && <CashView />}
         {activeTab === 'status' && <StatusView />}
+        {activeTab === 'chat' && <ChatView />}
       </main>
     </div>
   )

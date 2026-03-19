@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 from datetime import datetime
 
 import pandas as pd
@@ -6,6 +8,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..cache import get_cache
+from ..credentials import get_credentials
+from ..db import get_pool
 from ..sheets import fetch_sheet_data
 
 logger = logging.getLogger(__name__)
@@ -147,6 +151,88 @@ async def get_item_history(
         "total_spent": float(item_df["amount"].sum()),
         "avg_price": float(item_df["price"].mean()),
         "history": history,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Inventory rename
+# ---------------------------------------------------------------------------
+
+class RenameItemRequest(BaseModel):
+    old_name: str = Field(..., min_length=1, max_length=200)
+    new_name: str = Field(..., min_length=1, max_length=200)
+
+
+@router.patch("/inventory/rename")
+async def rename_item(payload: RenameItemRequest):
+    """Rename all occurrences of an item in the cache, DB, and optionally the Sheet."""
+    old = payload.old_name.strip()
+    new = payload.new_name.strip()
+
+    if old == new:
+        raise HTTPException(status_code=400, detail="Old and new names are the same.")
+
+    cache = get_cache()
+    df = cache.get_df()
+    if df is None:
+        raise HTTPException(status_code=503, detail="Data not loaded.")
+
+    mask = df["item"] == old
+    if not mask.any():
+        raise HTTPException(status_code=404, detail=f"Item '{old}' not found.")
+
+    rows_in_cache = int(mask.sum())
+    df.loc[mask, "item"] = new
+    cache.update(df)
+
+    # Update DB
+    db_rows = 0
+    pool = await get_pool()
+    if pool:
+        try:
+            async with pool.acquire() as conn:
+                result = await conn.execute(
+                    "UPDATE purchases SET item = $1 WHERE item = $2", new, old
+                )
+                db_rows = int(result.split()[-1])
+        except Exception as exc:
+            logger.warning("DB rename failed: %s", exc)
+
+    # Update Sheet if credentials available
+    sheet_updated = False
+    creds_json = get_credentials()
+    sheet_id = os.getenv("SHEET_ID")
+    if creds_json and sheet_id:
+        try:
+            import gspread
+            from google.oauth2.service_account import Credentials
+
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
+            ]
+            creds = Credentials.from_service_account_info(
+                json.loads(creds_json), scopes=scopes
+            )
+            gc = gspread.authorize(creds)
+            ws = gc.open_by_key(sheet_id).get_worksheet(0)
+            cells = ws.findall(old)
+            if cells:
+                for cell in cells:
+                    cell.value = new
+                ws.update_cells(cells)
+                sheet_updated = True
+        except Exception as exc:
+            logger.warning("Sheet rename failed: %s", exc)
+
+    logger.info("Renamed '%s' -> '%s' (%d rows in cache, %d in DB)", old, new, rows_in_cache, db_rows)
+    return {
+        "status": "ok",
+        "old_name": old,
+        "new_name": new,
+        "rows_renamed": rows_in_cache,
+        "db_rows": db_rows,
+        "sheet_updated": sheet_updated,
     }
 
 

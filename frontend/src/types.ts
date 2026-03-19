@@ -82,3 +82,15 @@ export interface SyncLogEntry {
   message: string
   synced_at: string
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  text: string
+  sql?: string
+  rowsFound?: number
+}
+
+export interface RenameItemPayload {
+  old_name: string
+  new_name: string
+}

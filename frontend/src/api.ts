@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, DateData, HealthData, InventoryItem, ItemHistory, SyncLogEntry } from './types'
+import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, ChatMessage, DateData, HealthData, InventoryItem, ItemHistory, RenameItemPayload, SyncLogEntry } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -62,3 +62,16 @@ export const uploadCredentials = (
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then((r) => r.data)
 }
+
+export const renameItem = (
+  payload: RenameItemPayload,
+): Promise<{ status: string; rows_renamed: number; db_rows: number; sheet_updated: boolean }> =>
+  api.patch('/inventory/rename', payload).then((r) => r.data)
+
+export const chatQuery = (
+  question: string,
+): Promise<{ answer: string; sql: string; rows_found: number; data: Record<string, unknown>[] }> =>
+  api.post('/chat', { question }).then((r) => r.data)
+
+// re-export ChatMessage so views can import from api if needed
+export type { ChatMessage }

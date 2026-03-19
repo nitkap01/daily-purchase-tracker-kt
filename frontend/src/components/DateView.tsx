@@ -93,15 +93,14 @@ export default function DateView() {
           >
             <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
-          {date < today() && (
-            <button
-              onClick={() => setDate(today())}
-              className="px-3 h-9 text-xs font-semibold rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95 transition-all shrink-0"
-              aria-label="Go to today"
-            >
-              Today
-            </button>
-          )}
+          <button
+            onClick={() => setDate(today())}
+            disabled={date >= today()}
+            className="px-3 h-9 text-xs font-semibold rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95 transition-all shrink-0 disabled:opacity-30 disabled:cursor-default"
+            aria-label="Go to today"
+          >
+            Today
+          </button>
         </div>
       </div>
 
