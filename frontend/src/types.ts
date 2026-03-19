@@ -58,3 +58,27 @@ export interface AddCashPayload {
   amount: number
   note: string
 }
+
+// ── Status ──────────────────────────────────────────────────────────────────
+export interface StatusCheck {
+  ok: boolean
+  message: string
+  [key: string]: unknown
+}
+
+export interface AppStatus {
+  ok: boolean
+  checks: {
+    google_sheet: StatusCheck
+    postgres: StatusCheck
+    google_credentials: StatusCheck
+  }
+}
+
+export interface SyncLogEntry {
+  direction: string
+  rows_synced: number
+  status: string
+  message: string
+  synced_at: string
+}

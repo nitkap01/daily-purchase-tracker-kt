@@ -8,9 +8,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .cache import get_cache
+from .db import close_pool, init_pool
 from .scheduler import start_scheduler, stop_scheduler
 from .sheets import fetch_sheet_data
-from .routers.data import router
+from .routers.data import router as data_router
+from .routers.sync import router as sync_router
+from .routers.status import router as status_router
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
@@ -23,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Init PostgreSQL pool (non-fatal if unavailable)
+    await init_pool()
+
     logger.info("Startup: loading Google Sheets data…")
     try:
         df = await fetch_sheet_data()
@@ -34,6 +40,7 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     yield
     stop_scheduler()
+    await close_pool()
     logger.info("Shutdown complete")
 
 
@@ -50,7 +57,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+app.include_router(data_router)
+app.include_router(sync_router)
+app.include_router(status_router)
 
 # ── Serve React SPA (present only in the production Docker image) ──────────
 if STATIC_DIR.exists():

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Calendar, Package, ShoppingBag } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Package, ShoppingBag } from 'lucide-react'
 import { getDateItems } from '../api'
 import ItemDetail from './ItemDetail'
 import type { DateData } from '../types'
@@ -8,6 +8,17 @@ const today = (): string => new Date().toISOString().split('T')[0]
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+
+const addDays = (dateStr: string, days: number): string => {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+const fmtDisplay = (dateStr: string): string => {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 export default function DateView() {
   const [date, setDate] = useState(today)
@@ -53,14 +64,36 @@ export default function DateView() {
           <Calendar className="w-4 h-4 text-indigo-600" />
           Select Date
         </label>
-        <input
-          id="date-picker"
-          type="date"
-          value={date}
-          max={today()}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDate((d) => addDays(d, -1))}
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-95 transition-all shrink-0"
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          </button>
+          <div className="relative flex-1">
+            <input
+              id="date-picker"
+              type="date"
+              value={date}
+              max={today()}
+              onChange={(e) => setDate(e.target.value)}
+              className="absolute inset-0 w-full opacity-0 cursor-pointer"
+            />
+            <div className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-center font-medium text-gray-800 bg-white pointer-events-none">
+              {fmtDisplay(date)}
+            </div>
+          </div>
+          <button
+            onClick={() => setDate((d) => { const next = addDays(d, 1); return next <= today() ? next : d })}
+            disabled={date >= today()}
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-95 transition-all shrink-0 disabled:opacity-30"
+            aria-label="Next day"
+          >
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
       </div>
 
       {/* Skeleton */}

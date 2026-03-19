@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AddCashPayload, AddItemPayload, CashEntry, DateData, HealthData, InventoryItem, ItemHistory } from './types'
+import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, DateData, HealthData, InventoryItem, ItemHistory, SyncLogEntry } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -40,3 +40,15 @@ export const getCashEntries = (): Promise<{ entries: CashEntry[]; total: number 
 
 export const addCashEntry = (payload: AddCashPayload): Promise<{ status: string }> =>
   api.post('/cash', payload).then((r) => r.data)
+
+export const getAppStatus = (): Promise<AppStatus> =>
+  api.get('/status').then((r) => r.data)
+
+export const syncSheetToDb = (): Promise<{ status: string; rows_synced: number }> =>
+  api.post('/sync/sheet-to-db').then((r) => r.data)
+
+export const syncDbToSheet = (): Promise<{ status: string; rows_synced: number }> =>
+  api.post('/sync/db-to-sheet').then((r) => r.data)
+
+export const getSyncLog = (): Promise<{ log: SyncLogEntry[] }> =>
+  api.get('/sync/log').then((r) => r.data)

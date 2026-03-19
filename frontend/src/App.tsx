@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Calendar, Layers, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
+import { Activity, Calendar, Layers, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
 import DateView from './components/DateView'
 import SearchView from './components/SearchView'
 import AddItemView from './components/AddItemView'
 import InventoryView from './components/InventoryView'
 import CashView from './components/CashView'
+import StatusView from './components/StatusView'
 import { getHealth, refreshData } from './api'
 import type { HealthData } from './types'
 import { APP_VERSION } from './version'
 
-type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash'
+type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash' | 'status'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
@@ -17,6 +18,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'add', label: 'Add', icon: <PlusCircle className="w-4 h-4" /> },
   { id: 'inventory', label: 'Inventory', icon: <Layers className="w-4 h-4" /> },
   { id: 'cash', label: 'Cash', icon: <PiggyBank className="w-4 h-4" /> },
+  { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
 ]
 
 export default function App() {
@@ -141,6 +143,7 @@ export default function App() {
         {activeTab === 'add' && <AddItemView />}
         {activeTab === 'inventory' && <InventoryView />}
         {activeTab === 'cash' && <CashView />}
+        {activeTab === 'status' && <StatusView />}
       </main>
     </div>
   )
