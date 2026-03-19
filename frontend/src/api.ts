@@ -41,6 +41,15 @@ export const getCashEntries = (): Promise<{ entries: CashEntry[]; total: number 
 export const addCashEntry = (payload: AddCashPayload): Promise<{ status: string }> =>
   api.post('/cash', payload).then((r) => r.data)
 
+export const updateCashEntry = (
+  id: number,
+  payload: AddCashPayload,
+): Promise<{ status: string }> =>
+  api.put(`/cash/${id}`, payload).then((r) => r.data)
+
+export const deleteCashEntry = (id: number): Promise<{ status: string }> =>
+  api.delete(`/cash/${id}`).then((r) => r.data)
+
 export const getAppStatus = (): Promise<AppStatus> =>
   api.get('/status').then((r) => r.data)
 
@@ -70,8 +79,12 @@ export const renameItem = (
 
 export const chatQuery = (
   question: string,
+  model?: string,
 ): Promise<{ answer: string; sql: string; rows_found: number; data: Record<string, unknown>[] }> =>
-  api.post('/chat', { question }).then((r) => r.data)
+  api.post('/chat', { question, model: model ?? '' }).then((r) => r.data)
+
+export const getChatModels = (): Promise<{ models: string[]; default: string }> =>
+  api.get('/chat/models').then((r) => r.data)
 
 // re-export ChatMessage so views can import from api if needed
 export type { ChatMessage }

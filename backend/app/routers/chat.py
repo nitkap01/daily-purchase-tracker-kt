@@ -82,6 +82,32 @@ def _validate_sql(sql: str) -> None:
 
 class ChatRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
+    model: str = Field(default="")
+
+
+@router.get("/chat/models")
+async def list_chat_models():
+    """Return available OpenAI chat models (filtered to gpt-* variants)."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured.")
+    try:
+        from openai import AsyncOpenAI
+    except ImportError:
+        raise HTTPException(status_code=503, detail="OpenAI library not installed.")
+
+    client = AsyncOpenAI(api_key=api_key)
+    try:
+        all_models = await client.models.list()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch models: {exc}")
+
+    default_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model_ids = sorted(
+        [m.id for m in all_models.data if "gpt" in m.id.lower()],
+        key=lambda x: x,
+    )
+    return {"models": model_ids, "default": default_model}
 
 
 @router.post("/chat")
@@ -105,7 +131,7 @@ async def chat_query(payload: ChatRequest):
     except ImportError:
         raise HTTPException(status_code=503, detail="OpenAI library not installed.")
 
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model = payload.model.strip() or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     client = AsyncOpenAI(api_key=api_key)
 
     # ── Step 1: Generate SQL ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bot, ChevronDown, ChevronUp, MessageCircle, Send, Sparkles } from 'lucide-react'
-import { chatQuery } from '../api'
+import { chatQuery, getChatModels } from '../api'
 import type { ChatMessage } from '../types'
 
 const CHIPS = [
@@ -60,8 +60,19 @@ export default function ChatView() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [models, setModels] = useState<string[]>([])
+  const [selectedModel, setSelectedModel] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    getChatModels()
+      .then(({ models: list, default: def }) => {
+        setModels(list)
+        setSelectedModel(def)
+      })
+      .catch(() => {/* silently ignore — model selector will be empty */})
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -74,7 +85,7 @@ export default function ChatView() {
     setMessages((prev) => [...prev, { role: 'user', text: q }])
     setLoading(true)
     try {
-      const result = await chatQuery(q)
+      const result = await chatQuery(q, selectedModel || undefined)
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', text: result.answer, sql: result.sql, rowsFound: result.rows_found },
@@ -103,10 +114,22 @@ export default function ChatView() {
         <div className="w-9 h-9 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-white" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900 text-sm">AI Purchase Assistant</p>
           <p className="text-xs text-gray-500">Ask questions about your purchases in plain English</p>
         </div>
+        {models.length > 0 && (
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 shrink-0 max-w-[160px]"
+            title="Select AI model"
+          >
+            {models.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Messages */}

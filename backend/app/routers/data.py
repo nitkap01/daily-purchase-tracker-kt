@@ -313,20 +313,102 @@ class CashEntryRequest(BaseModel):
     note: str = Field(default="", max_length=300)
 
 
+class UpdateCashEntryRequest(BaseModel):
+    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    amount: float = Field(..., gt=0)
+    note: str = Field(default="", max_length=300)
+
+
 @router.post("/cash")
 async def add_cash(payload: CashEntryRequest):
-    """Append a cash entry for a given date."""
+    """Append a cash entry for a given date, persisting to DB and cache."""
     try:
-        datetime.strptime(payload.date, "%Y-%m-%d")
+        entry_date = datetime.strptime(payload.date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format.")
-    get_cache().add_cash_entry(payload.date, payload.amount, payload.note.strip())
+
+    note = payload.note.strip()
+
+    # Persist to PostgreSQL
+    pool = await get_pool()
+    if pool:
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO cash_entries (date, amount, note) VALUES ($1, $2, $3)",
+                    entry_date,
+                    payload.amount,
+                    note,
+                )
+        except Exception as exc:
+            logger.error("DB cash insert failed: %s", exc)
+            raise HTTPException(status_code=500, detail=f"Database write failed: {exc}")
+
+    get_cache().add_cash_entry(payload.date, payload.amount, note)
     return {"status": "added"}
 
 
 @router.get("/cash")
 async def get_cash():
-    """Return all cash entries sorted by date descending."""
-    entries = get_cache().get_cash_entries()
+    """Return all cash entries sorted by date descending. Reads from DB; falls back to cache."""
+    pool = await get_pool()
+    if pool:
+        try:
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT id, date, amount, note FROM cash_entries ORDER BY date DESC"
+                )
+            entries = [
+                {"id": r["id"], "date": str(r["date"]), "amount": float(r["amount"]), "note": r["note"]}
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.warning("DB cash read failed, falling back to cache: %s", exc)
+            entries = get_cache().get_cash_entries()
+    else:
+        entries = get_cache().get_cash_entries()
+
     total = sum(e["amount"] for e in entries)
     return {"entries": entries, "total": total}
+
+
+@router.put("/cash/{entry_id}")
+async def update_cash(entry_id: int, payload: UpdateCashEntryRequest):
+    """Update a cash entry by id."""
+    try:
+        entry_date = datetime.strptime(payload.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format.")
+
+    pool = await get_pool()
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database not available.")
+
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE cash_entries SET date=$1, amount=$2, note=$3 WHERE id=$4",
+            entry_date,
+            payload.amount,
+            payload.note.strip(),
+            entry_id,
+        )
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail="Entry not found.")
+    return {"status": "updated"}
+
+
+@router.delete("/cash/{entry_id}")
+async def delete_cash(entry_id: int):
+    """Delete a cash entry by id."""
+    pool = await get_pool()
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database not available.")
+
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM cash_entries WHERE id=$1",
+            entry_id,
+        )
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Entry not found.")
+    return {"status": "deleted"}

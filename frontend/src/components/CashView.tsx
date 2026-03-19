@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { PiggyBank, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PiggyBank, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react'
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { addCashEntry, getCashEntries } from '../api'
+import { addCashEntry, getCashEntries, updateCashEntry, deleteCashEntry } from '../api'
 import type { CashEntry } from '../types'
 
 const today = (): string => new Date().toISOString().split('T')[0]
@@ -27,8 +30,134 @@ const fmtShort = (n: number) =>
 
 const ITEMS_PER_PAGE = 10
 
+// Returns ISO week label like "2026-W12"
+const getISOWeek = (dateStr: string): string => {
+  const d = new Date(dateStr)
+  const jan4 = new Date(d.getFullYear(), 0, 4)
+  const startOfWeek1 = new Date(jan4)
+  startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7))
+  const diff = d.getTime() - startOfWeek1.getTime()
+  const week = Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1
+  return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const getMonthLabel = (dateStr: string): string => {
+  const [y, m] = dateStr.split('-')
+  return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`
+}
+
 const inputCls =
   'w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white'
+
+type SummaryRow = { label: string; amount: number }
+
+function SummaryTabs({
+  weeklyTotals,
+  monthlyTotals,
+  fmt,
+  fmtShort,
+}: {
+  weeklyTotals: SummaryRow[]
+  monthlyTotals: SummaryRow[]
+  fmt: (n: number) => string
+  fmtShort: (n: number) => string
+}) {
+  const [tab, setTab] = useState<'weekly' | 'monthly'>('monthly')
+  const rows = tab === 'weekly' ? weeklyTotals : monthlyTotals
+  const max = Math.max(...rows.map((r) => r.amount), 1)
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Tab header */}
+      <div className="border-b border-slate-100 flex">
+        {(['monthly', 'weekly'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+              tab === t
+                ? 'text-emerald-700 bg-emerald-50 border-b-2 border-emerald-600'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {t === 'monthly' ? 'By Month' : 'By Week'}
+          </button>
+        ))}
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-6">No data</p>
+      ) : (
+        <>
+          {/* Bar chart */}
+          <div className="px-4 pt-4">
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={rows} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v) => `₹${fmtShort(v)}`}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={64}
+                />
+                <Tooltip
+                  formatter={(v: number) => [`₹${fmt(v)}`, 'Total']}
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                />
+                <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                  {rows.map((_, i) => (
+                    <Cell key={i} fill={i === 0 ? '#059669' : '#6ee7b7'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Summary table */}
+          <div className="px-4 pb-4 pt-2">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 uppercase tracking-wide">
+                  <th className="text-left py-1 font-medium">
+                    {tab === 'monthly' ? 'Month' : 'Week'}
+                  </th>
+                  <th className="text-right py-1 font-medium">Total</th>
+                  <th className="w-1/3 py-1" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {rows.map((r, i) => (
+                  <tr key={r.label} className="group">
+                    <td className="py-2 pr-3 font-medium text-gray-700">{r.label}</td>
+                    <td className="py-2 text-right font-bold text-emerald-600 whitespace-nowrap">
+                      ₹{fmt(r.amount)}
+                    </td>
+                    <td className="py-2 pl-3">
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${i === 0 ? 'bg-emerald-500' : 'bg-emerald-300'}`}
+                          style={{ width: `${(r.amount / max) * 100}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export default function CashView() {
   const [entries, setEntries] = useState<CashEntry[]>([])
@@ -41,6 +170,14 @@ export default function CashView() {
   const [success, setSuccess] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+
+  // Edit state
+  const [editId, setEditId] = useState<number | null>(null)
+  const [editDate, setEditDate] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editNote, setEditNote] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const reload = () =>
     getCashEntries()
@@ -72,10 +209,73 @@ export default function CashView() {
     }
   }
 
+  const startEdit = (e: CashEntry) => {
+    if (!e.id) return
+    setEditId(e.id)
+    setEditDate(e.date)
+    setEditAmount(String(e.amount))
+    setEditNote(e.note)
+  }
+
+  const cancelEdit = () => setEditId(null)
+
+  const commitEdit = async () => {
+    if (!editId) return
+    const amt = parseFloat(editAmount)
+    if (!editDate || isNaN(amt) || amt <= 0) return
+    setEditSaving(true)
+    try {
+      await updateCashEntry(editId, { date: editDate, amount: amt, note: editNote.trim() })
+      await reload()
+      setEditId(null)
+    } catch {
+      // keep edit row open on failure
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      await deleteCashEntry(id)
+      await reload()
+    } catch {
+      // ignore
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   // Chart: entries sorted asc for trend line
   const chartData = [...entries]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((e) => ({ date: shortDate(e.date), amount: e.amount }))
+
+  // Weekly totals
+  const weeklyTotals = (() => {
+    const map = new Map<string, number>()
+    entries.forEach((e) => {
+      const k = getISOWeek(e.date)
+      map.set(k, (map.get(k) ?? 0) + e.amount)
+    })
+    return Array.from(map.entries())
+      .map(([label, amount]) => ({ label, amount }))
+      .sort((a, b) => b.label.localeCompare(a.label))
+  })()
+
+  // Monthly totals
+  const monthlyTotals = (() => {
+    const map = new Map<string, { label: string; amount: number }>()
+    entries.forEach((e) => {
+      const key = e.date.slice(0, 7)
+      const prev = map.get(key)
+      map.set(key, { label: getMonthLabel(e.date), amount: (prev?.amount ?? 0) + e.amount })
+    })
+    return Array.from(map.entries())
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => b.key.localeCompare(a.key))
+  })()
 
   // Table: entries sorted desc (newest first)
   const sortedEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date))
@@ -208,6 +408,16 @@ export default function CashView() {
         </div>
       )}
 
+      {/* Weekly / Monthly summary */}
+      {!loading && entries.length > 0 && (
+        <SummaryTabs
+          weeklyTotals={weeklyTotals}
+          monthlyTotals={monthlyTotals}
+          fmt={fmt}
+          fmtShort={fmtShort}
+        />
+      )}
+
       {/* Table */}
       {!loading && sortedEntries.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -224,18 +434,94 @@ export default function CashView() {
                   <th className="text-left px-4 py-2 font-medium">Date</th>
                   <th className="text-left px-4 py-2 font-medium">Note</th>
                   <th className="text-right px-4 py-2 font-medium">Amount</th>
+                  <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {pageEntries.map((e, i) => (
-                  <tr key={`${e.date}-${i}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{shortDate(e.date)}</td>
-                    <td className="px-4 py-2.5 text-gray-500 truncate max-w-[140px]">
-                      {e.note || <span className="text-gray-300 italic">—</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-emerald-600">₹{fmt(e.amount)}</td>
-                  </tr>
-                ))}
+                {pageEntries.map((e, i) =>
+                  editId === e.id ? (
+                    <tr key={`edit-${e.id}`} className="bg-indigo-50">
+                      <td className="px-2 py-2">
+                        <input
+                          type="date"
+                          value={editDate}
+                          max={today()}
+                          onChange={(ev) => setEditDate(ev.target.value)}
+                          className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 w-32"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={editNote}
+                          maxLength={300}
+                          placeholder="Note"
+                          onChange={(ev) => setEditNote(ev.target.value)}
+                          className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 w-full min-w-[100px]"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={editAmount}
+                          onChange={(ev) => setEditAmount(ev.target.value)}
+                          className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 w-24 text-right"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={commitEdit}
+                            disabled={editSaving}
+                            className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+                            title="Save"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            disabled={editSaving}
+                            className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-200 text-gray-600 hover:bg-slate-300 disabled:opacity-40 transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={`${e.date}-${i}`} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{shortDate(e.date)}</td>
+                      <td className="px-4 py-2.5 text-gray-500 truncate max-w-[140px]">
+                        {e.note || <span className="text-gray-300 italic">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-bold text-emerald-600">₹{fmt(e.amount)}</td>
+                      <td className="px-2 py-2">
+                        {e.id && (
+                          <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => startEdit(e)}
+                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(e.id!)}
+                              disabled={deletingId === e.id}
+                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>

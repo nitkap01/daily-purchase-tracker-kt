@@ -48,6 +48,7 @@ export interface AddItemPayload {
 }
 
 export interface CashEntry {
+  id?: number
   date: string
   amount: number
   note: string
