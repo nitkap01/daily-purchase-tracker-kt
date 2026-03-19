@@ -1,0 +1,17 @@
+# Environment — never commit secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Docker build artifacts
+*.log
