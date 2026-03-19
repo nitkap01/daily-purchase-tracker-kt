@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Calendar, Layers, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
+import { Calendar, Layers, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
 import DateView from './components/DateView'
 import SearchView from './components/SearchView'
 import AddItemView from './components/AddItemView'
 import InventoryView from './components/InventoryView'
+import CashView from './components/CashView'
 import { getHealth, refreshData } from './api'
 import type { HealthData } from './types'
+import { APP_VERSION } from './version'
 
-type Tab = 'date' | 'search' | 'add' | 'inventory'
+type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
   { id: 'search', label: 'Search', icon: <Search className="w-4 h-4" /> },
   { id: 'add', label: 'Add', icon: <PlusCircle className="w-4 h-4" /> },
   { id: 'inventory', label: 'Inventory', icon: <Layers className="w-4 h-4" /> },
+  { id: 'cash', label: 'Cash', icon: <PiggyBank className="w-4 h-4" /> },
 ]
 
 export default function App() {
@@ -60,8 +63,11 @@ export default function App() {
       {/* ── Header ── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          {/* Brand — click to go home */}
+          <button
+            onClick={() => setActiveTab('date')}
+            className="flex items-center gap-2.5 min-w-0 text-left active:opacity-70 transition-opacity"
+          >
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <ShoppingCart className="w-4 h-4 text-white" />
             </div>
@@ -69,13 +75,13 @@ export default function App() {
               <h1 className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
                 Kapoor Trader Daily Purchase Tracker
               </h1>
-              {health?.last_refreshed && (
-                <p className="text-xs text-gray-400 leading-tight truncate">
-                  Updated {formatRefresh(health.last_refreshed)}
-                </p>
-              )}
+              <p className="text-xs text-gray-400 leading-tight truncate">
+                {health?.last_refreshed
+                  ? `Updated ${formatRefresh(health.last_refreshed)}`
+                  : `v${APP_VERSION}`}
+              </p>
             </div>
-          </div>
+          </button>
 
           {/* Actions */}
           <div className="flex items-center gap-2 shrink-0">
@@ -134,6 +140,7 @@ export default function App() {
         {activeTab === 'search' && <SearchView />}
         {activeTab === 'add' && <AddItemView />}
         {activeTab === 'inventory' && <InventoryView />}
+        {activeTab === 'cash' && <CashView />}
       </main>
     </div>
   )

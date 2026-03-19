@@ -46,3 +46,15 @@ export interface AddItemPayload {
   quantity: number
   price: number
 }
+
+export interface CashEntry {
+  date: string
+  amount: number
+  note: string
+}
+
+export interface AddCashPayload {
+  date: string
+  amount: number
+  note: string
+}

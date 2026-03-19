@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AddItemPayload, DateData, HealthData, InventoryItem, ItemHistory } from './types'
+import type { AddCashPayload, AddItemPayload, CashEntry, DateData, HealthData, InventoryItem, ItemHistory } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -34,3 +34,9 @@ export const getInventory = (): Promise<{ items: InventoryItem[] }> =>
 
 export const addItem = (payload: AddItemPayload): Promise<{ status: string; amount: number }> =>
   api.post('/add', payload).then((r) => r.data)
+
+export const getCashEntries = (): Promise<{ entries: CashEntry[]; total: number }> =>
+  api.get('/cash').then((r) => r.data)
+
+export const addCashEntry = (payload: AddCashPayload): Promise<{ status: string }> =>
+  api.post('/cash', payload).then((r) => r.data)

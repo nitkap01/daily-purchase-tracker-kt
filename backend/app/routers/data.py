@@ -215,3 +215,32 @@ async def add_item(payload: AddItemRequest):
     cache.update(updated)
     logger.info("Added item '%s' on %s to cache", payload.item, payload.date)
     return {"status": "added", "amount": amount}
+
+
+# ---------------------------------------------------------------------------
+# Cash ledger — daily cash entries
+# ---------------------------------------------------------------------------
+
+class CashEntryRequest(BaseModel):
+    date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    amount: float = Field(..., gt=0)
+    note: str = Field(default="", max_length=300)
+
+
+@router.post("/cash")
+async def add_cash(payload: CashEntryRequest):
+    """Append a cash entry for a given date."""
+    try:
+        datetime.strptime(payload.date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format.")
+    get_cache().add_cash_entry(payload.date, payload.amount, payload.note.strip())
+    return {"status": "added"}
+
+
+@router.get("/cash")
+async def get_cash():
+    """Return all cash entries sorted by date descending."""
+    entries = get_cache().get_cash_entries()
+    total = sum(e["amount"] for e in entries)
+    return {"entries": entries, "total": total}

@@ -59,7 +59,7 @@ export default function DateView() {
           value={date}
           max={today()}
           onChange={(e) => setDate(e.target.value)}
-          className="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
         />
       </div>
 

@@ -75,7 +75,7 @@ export default function AddItemView() {
               value={date}
               max={today()}
               onChange={(e) => setDate(e.target.value)}
-              className={inputCls}
+              className="w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             />
             </div>
           </Field>
