@@ -52,3 +52,13 @@ export const syncDbToSheet = (): Promise<{ status: string; rows_synced: number }
 
 export const getSyncLog = (): Promise<{ log: SyncLogEntry[] }> =>
   api.get('/sync/log').then((r) => r.data)
+
+export const uploadCredentials = (
+  file: File,
+): Promise<{ status: string; project_id: string; client_email: string }> => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post('/credentials/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data)
+}

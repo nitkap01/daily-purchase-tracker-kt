@@ -9,6 +9,7 @@ import os
 import httpx
 from fastapi import APIRouter
 
+from ..credentials import has_credentials
 from ..db import check_connection
 
 logger = logging.getLogger(__name__)
@@ -64,10 +65,9 @@ async def get_status():
     }
 
     # ── Google Credentials (for DB→Sheet) ────────────────────────────────
-    has_creds = bool(os.getenv("GOOGLE_CREDENTIALS_JSON"))
     results["google_credentials"] = {
-        "ok": has_creds,
-        "message": "Configured" if has_creds else "Not configured (DB→Sheet sync unavailable)",
+        "ok": has_credentials(),
+        "message": "Configured" if has_credentials() else "Not configured (upload via Status tab)",
     }
 
     overall = all(v["ok"] for k, v in results.items() if k != "google_credentials")

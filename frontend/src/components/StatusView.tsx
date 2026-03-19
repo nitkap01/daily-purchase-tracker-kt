@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
   ArrowDownToLine,
@@ -8,9 +8,10 @@ import {
   FileSpreadsheet,
   Key,
   RefreshCw,
+  Upload,
   XCircle,
 } from 'lucide-react'
-import { getAppStatus, getSyncLog, syncDbToSheet, syncSheetToDb } from '../api'
+import { getAppStatus, getSyncLog, syncDbToSheet, syncSheetToDb, uploadCredentials } from '../api'
 import type { AppStatus, SyncLogEntry } from '../types'
 
 const fmtDate = (iso: string) =>
@@ -36,6 +37,9 @@ export default function StatusView() {
   const [logLoading, setLogLoading] = useState(true)
   const [syncing, setSyncing] = useState<'sheet_to_db' | 'db_to_sheet' | null>(null)
   const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadStatus = () => {
     setStatusLoading(true)
@@ -74,6 +78,28 @@ export default function StatusView() {
       setSyncMsg({ ok: false, text: msg })
     } finally {
       setSyncing(null)
+    }
+  }
+
+  const handleCredentialFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!e.target.files) return
+    // reset so same file can be re-selected
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    setUploadMsg(null)
+    try {
+      const result = await uploadCredentials(file)
+      setUploadMsg({ ok: true, text: `✓ Credentials loaded (${result.client_email})` })
+      loadStatus()
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        'Upload failed. Ensure the file is a valid service-account JSON.'
+      setUploadMsg({ ok: false, text: msg })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -146,16 +172,43 @@ export default function StatusView() {
             </div>
 
             {/* Google Credentials */}
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Key className="w-5 h-5 text-amber-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Google Credentials</p>
-                <p className="text-xs text-gray-400">Required for DB → Sheet</p>
+            <div className="px-4 py-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <Key className="w-5 h-5 text-amber-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Google Credentials</p>
+                  <p className="text-xs text-gray-400">Required for DB → Sheet sync</p>
+                </div>
+                <StatusBadge
+                  ok={status.checks.google_credentials.ok}
+                  message={status.checks.google_credentials.message as string}
+                />
               </div>
-              <StatusBadge
-                ok={status.checks.google_credentials.ok}
-                message={status.checks.google_credentials.message as string}
-              />
+              {/* Upload section */}
+              <div className="ml-8">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleCredentialFile}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {uploading
+                    ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    : <Upload className="w-3.5 h-3.5" />}
+                  {uploading ? 'Uploading…' : 'Upload service-account JSON'}
+                </button>
+                {uploadMsg && (
+                  <p className={`mt-1.5 text-xs font-medium ${uploadMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {uploadMsg.text}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
