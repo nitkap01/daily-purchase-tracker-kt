@@ -100,28 +100,50 @@ async def create_cheque(payload: CreateChequeRequest):
 
 @router.patch("/cheques/{cheque_id}/clear")
 async def clear_cheque(cheque_id: int):
-    """Mark a pending cheque as cleared by the bank."""
+    """Mark a pending cheque as cleared; auto-marks any matching pending payment as received."""
     pool = await get_pool()
     if not pool:
         raise HTTPException(status_code=503, detail="Database not available.")
 
     now = datetime.now(timezone.utc)
     async with pool.acquire() as conn:
-        result = await conn.execute(
-            """
-            UPDATE cheques
-            SET status = 'cleared', cleared_at = $1
-            WHERE id = $2 AND status = 'pending'
-            """,
-            now,
-            cheque_id,
-        )
+        async with conn.transaction():
+            cheque = await conn.fetchrow(
+                "SELECT party_name, amount FROM cheques WHERE id = $1 AND status = 'pending'",
+                cheque_id,
+            )
+            if not cheque:
+                raise HTTPException(status_code=404, detail="Cheque not found or already settled.")
 
-    if result == "UPDATE 0":
-        raise HTTPException(
-            status_code=404,
-            detail="Cheque not found or already settled.",
-        )
+            await conn.execute(
+                "UPDATE cheques SET status = 'cleared', cleared_at = $1 WHERE id = $2",
+                now,
+                cheque_id,
+            )
+
+            # Auto-complete the first matching pending payment for same party + amount
+            await conn.execute(
+                """
+                UPDATE payments
+                SET status = 'received',
+                    received_at = $1,
+                    notes = CASE
+                        WHEN (notes IS NULL OR notes = '') THEN 'Cheque received'
+                        ELSE notes || ' · Cheque received'
+                    END
+                WHERE id = (
+                    SELECT id FROM payments
+                    WHERE LOWER(party_name) = LOWER($2)
+                      AND amount = $3
+                      AND status = 'pending'
+                    ORDER BY purchase_date ASC, created_at ASC
+                    LIMIT 1
+                )
+                """,
+                now,
+                cheque["party_name"],
+                cheque["amount"],
+            )
 
     logger.info("Cleared cheque id=%d at %s", cheque_id, now.isoformat())
     return {"status": "cleared", "cleared_at": now.isoformat()}

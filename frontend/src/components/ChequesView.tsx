@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  AlertCircle,
   Check,
   ChevronDown,
   ChevronUp,
@@ -14,9 +15,10 @@ import {
   createCheque,
   deleteCheque,
   getCheques,
+  getPayments,
   rejectCheque,
 } from '../api'
-import type { Cheque } from '../types'
+import type { Cheque, Payment } from '../types'
 
 const today = (): string => new Date().toISOString().split('T')[0]
 
@@ -79,6 +81,9 @@ export default function ChequesView() {
   const [loading, setLoading] = useState(true)
   const [dbError, setDbError] = useState(false)
 
+  // Pending payments — used to show match hint in the add form
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([])
+
   // Add form
   const [showForm, setShowForm] = useState(false)
   const [partyName, setPartyName] = useState('')
@@ -114,6 +119,9 @@ export default function ChequesView() {
 
   useEffect(() => {
     reload().finally(() => setLoading(false))
+    getPayments()
+      .then((data) => setPendingPayments(data.pending))
+      .catch(() => {})
   }, [])
 
   const handleSave = async () => {
@@ -261,6 +269,28 @@ export default function ChequesView() {
               {formError}
             </p>
           )}
+          {(() => {
+            const amt = parseFloat(amount)
+            const match =
+              partyName.trim() && !isNaN(amt) && amt > 0
+                ? pendingPayments.find(
+                    (p) =>
+                      p.party_name.toLowerCase() === partyName.trim().toLowerCase() &&
+                      p.amount === amt,
+                  )
+                : undefined
+            return match ? (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+                <span>
+                  Matches pending payment:{' '}
+                  <strong>{match.party_name}</strong> · ₹{fmt(match.amount)}
+                  {match.notes ? ` (${match.notes})` : ''}
+                  {' '}— confirming this cheque will auto-mark that payment as received.
+                </span>
+              </div>
+            ) : null
+          })()}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Party Name</label>
