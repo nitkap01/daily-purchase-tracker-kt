@@ -21,11 +21,18 @@ SEMVER="${VERSION#v}"
 echo "export const APP_VERSION = '${SEMVER}'" > "$VERSION_FILE"
 echo "✅  Updated ${VERSION_FILE} → ${SEMVER}"
 
-# ── 3. Build & push multi-platform image ─────────────────────────────────────
+# ── 3. Pre-pull base images to warm the layer cache ─────────────────────────
+echo ""
+echo "📦  Pulling base images …"
+docker pull node:22-alpine
+docker pull python:3.12-slim
+
+# ── 4. Build & push multi-platform image ─────────────────────────────────────
 echo ""
 echo "🚀  Building ${REPO}:${VERSION} (linux/amd64) …"
 docker buildx build \
   --platform linux/amd64 \
+  --provenance=false \
   -t "${REPO}:${VERSION}" \
   --push .
 

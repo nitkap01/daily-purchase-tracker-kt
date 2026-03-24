@@ -154,7 +154,7 @@ function OrderBuilder({
       </div>
 
       {/* Add item */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-4 py-3 border-b border-slate-100">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Add Item</p>
         </div>

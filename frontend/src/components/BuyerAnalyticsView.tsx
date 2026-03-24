@@ -312,6 +312,18 @@ export default function BuyerAnalyticsView() {
             </div>
           )}
 
+          {/* Date-wise history */}
+          {analytics.purchase_history.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-1">
+                Purchase History
+              </p>
+              {analytics.purchase_history.map((day, i) => (
+                <DayRow key={i} day={day} />
+              ))}
+            </div>
+          )}
+
           {/* Item breakdown */}
           {analytics.item_summary.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -353,18 +365,6 @@ export default function BuyerAnalyticsView() {
                   )
                 })}
               </div>
-            </div>
-          )}
-
-          {/* Date-wise history */}
-          {analytics.purchase_history.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-1">
-                Purchase History
-              </p>
-              {analytics.purchase_history.map((day, i) => (
-                <DayRow key={i} day={day} />
-              ))}
             </div>
           )}
         </>
