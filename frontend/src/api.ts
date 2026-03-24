@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, ChatMessage, CreatePaymentPayload, DateData, HealthData, InventoryItem, ItemHistory, Payment, PaymentsData, RenameItemPayload, SellerAnalytics } from './types'
+import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, ChatMessage, Cheque, ChequesData, CreateChequePayload, CreatePaymentPayload, DateData, HealthData, InventoryItem, ItemHistory, Payment, PaymentsData, RenameItemPayload, SellerAnalytics } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -103,5 +103,22 @@ export const markPaymentReceived = (id: number): Promise<{ status: string; recei
 export const deletePayment = (id: number): Promise<{ status: string }> =>
   api.delete(`/payments/${id}`).then((r) => r.data)
 
+// ── Cheques ─────────────────────────────────────────────────────────────────
+
+export const getCheques = (): Promise<ChequesData> =>
+  api.get('/cheques').then((r) => r.data)
+
+export const createCheque = (payload: CreateChequePayload): Promise<{ status: string; id: number }> =>
+  api.post('/cheques', payload).then((r) => r.data)
+
+export const clearCheque = (id: number): Promise<{ status: string; cleared_at: string }> =>
+  api.patch(`/cheques/${id}/clear`).then((r) => r.data)
+
+export const rejectCheque = (id: number): Promise<{ status: string; rejected_at: string }> =>
+  api.patch(`/cheques/${id}/reject`).then((r) => r.data)
+
+export const deleteCheque = (id: number): Promise<{ status: string }> =>
+  api.delete(`/cheques/${id}`).then((r) => r.data)
+
 // re-export ChatMessage so views can import from api if needed
-export type { ChatMessage, Payment }
+export type { ChatMessage, Cheque, Payment }

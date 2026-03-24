@@ -9,11 +9,12 @@ import ChatView from './components/ChatView'
 import OrderView from './components/OrderView'
 import BuyerAnalyticsView from './components/BuyerAnalyticsView'
 import PaymentsView from './components/PaymentsView'
+import ChequesView from './components/ChequesView'
 import { exportCsv, getHealth, refreshData } from './api'
 import type { HealthData } from './types'
 import { APP_VERSION } from './version'
 
-type Tab = 'date' | 'search' | 'inventory' | 'cash' | 'order' | 'analytics' | 'payments' | 'status' | 'chat'
+type Tab = 'date' | 'search' | 'inventory' | 'cash' | 'order' | 'analytics' | 'payments' | 'cheques' | 'status' | 'chat'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
@@ -23,6 +24,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'order', label: 'Orders', icon: <ClipboardList className="w-4 h-4" /> },
   { id: 'analytics', label: 'Buyers', icon: <BarChart2 className="w-4 h-4" /> },
   { id: 'payments', label: 'Payments', icon: <CreditCard className="w-4 h-4" /> },
+  { id: 'cheques', label: 'Cheques', icon: <ClipboardList className="w-4 h-4" /> },
   { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
   { id: 'chat', label: 'AI Chat', icon: <MessageCircle className="w-4 h-4" /> },
 ]
@@ -223,6 +225,7 @@ export default function App() {
         {activeTab === 'order' && <OrderView />}
         {activeTab === 'analytics' && <BuyerAnalyticsView />}
         {activeTab === 'payments' && <PaymentsView />}
+        {activeTab === 'cheques' && <ChequesView />}
         {activeTab === 'status' && <StatusView />}
         {activeTab === 'chat' && <ChatView />}
       </main>

@@ -140,6 +140,31 @@ export interface RenameItemPayload {
   new_name: string
 }
 
+// ── Cheques ─────────────────────────────────────────────────────────────────
+export interface Cheque {
+  id: number
+  party_name: string
+  amount: number
+  cheque_number: string
+  cheque_date: string
+  status: 'pending' | 'cleared' | 'rejected'
+  cleared_at: string | null
+  rejected_at: string | null
+  created_at: string | null
+}
+
+export interface ChequesData {
+  pending: Cheque[]
+  settled: Cheque[]
+}
+
+export interface CreateChequePayload {
+  party_name: string
+  amount: number
+  cheque_number: string
+  cheque_date: string
+}
+
 // ── Payments ────────────────────────────────────────────────────────────────
 export interface Payment {
   id: number
