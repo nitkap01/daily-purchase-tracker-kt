@@ -294,14 +294,56 @@ export default function BuyerAnalyticsView() {
                   = ₹{fmt(analytics.total_spent + gstTotal)}
                 </p>
               )}
+              {(analytics.with_bill_spent > 0 || analytics.without_bill_spent > 0) && (
+                <div className="mt-1.5 space-y-0.5 text-left">
+                  {analytics.with_bill_spent > 0 && (
+                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
+                      W ₹{fmt(analytics.with_bill_spent)}
+                    </p>
+                  )}
+                  {analytics.without_bill_spent > 0 && (
+                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
+                      WB ₹{fmt(analytics.without_bill_spent)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
               <p className="text-xs text-gray-400 dark:text-slate-500">Purchases</p>
               <p className="font-bold text-gray-800 dark:text-slate-100 text-base mt-0.5">{analytics.total_purchases}</p>
+              {(analytics.with_bill_purchases > 0 || analytics.without_bill_purchases > 0) && (
+                <div className="mt-1.5 space-y-0.5 text-left">
+                  {analytics.with_bill_purchases > 0 && (
+                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
+                      W {analytics.with_bill_purchases}
+                    </p>
+                  )}
+                  {analytics.without_bill_purchases > 0 && (
+                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
+                      WB {analytics.without_bill_purchases}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
               <p className="text-xs text-gray-400 dark:text-slate-500">Items</p>
               <p className="font-bold text-gray-800 dark:text-slate-100 text-base mt-0.5">{analytics.unique_items}</p>
+              {(analytics.with_bill_unique_items > 0 || analytics.without_bill_unique_items > 0) && (
+                <div className="mt-1.5 space-y-0.5 text-left">
+                  {analytics.with_bill_unique_items > 0 && (
+                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
+                      W {analytics.with_bill_unique_items}
+                    </p>
+                  )}
+                  {analytics.without_bill_unique_items > 0 && (
+                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
+                      WB {analytics.without_bill_unique_items}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

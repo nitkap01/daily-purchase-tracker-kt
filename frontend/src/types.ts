@@ -100,6 +100,12 @@ export interface SellerAnalytics {
   total_spent: number
   total_purchases: number
   unique_items: number
+  with_bill_spent: number
+  with_bill_purchases: number
+  with_bill_unique_items: number
+  without_bill_spent: number
+  without_bill_purchases: number
+  without_bill_unique_items: number
   item_summary: SellerItemSummary[]
   purchase_history: SellerDayHistory[]
 }

@@ -506,6 +506,12 @@ async def get_seller_analytics(
             "unique_items": 0,
             "item_summary": [],
             "purchase_history": [],
+            "with_bill_spent": 0.0,
+            "with_bill_purchases": 0,
+            "with_bill_unique_items": 0,
+            "without_bill_spent": 0.0,
+            "without_bill_purchases": 0,
+            "without_bill_unique_items": 0,
         }
 
     # Item-level summary
@@ -537,11 +543,26 @@ async def get_seller_analytics(
         })
     history.sort(key=lambda x: x["date"], reverse=True)
 
+    # Bill-type breakdown
+    if "bill_type" in sel_df.columns:
+        bt = sel_df["bill_type"].str.upper().str.strip()
+        w_df = sel_df[bt == "W"]
+        wb_df = sel_df[bt == "WB"]
+    else:
+        w_df = sel_df.iloc[0:0]
+        wb_df = sel_df.iloc[0:0]
+
     return {
         "seller": seller,
         "total_spent": float(sel_df["amount"].sum()),
         "total_purchases": int(len(sel_df)),
         "unique_items": int(sel_df["item"].nunique()),
+        "with_bill_spent": float(w_df["amount"].sum()) if not w_df.empty else 0.0,
+        "with_bill_purchases": int(len(w_df)),
+        "with_bill_unique_items": int(w_df["item"].nunique()) if not w_df.empty else 0,
+        "without_bill_spent": float(wb_df["amount"].sum()) if not wb_df.empty else 0.0,
+        "without_bill_purchases": int(len(wb_df)),
+        "without_bill_unique_items": int(wb_df["item"].nunique()) if not wb_df.empty else 0,
         "item_summary": item_summary,
         "purchase_history": history,
     }
