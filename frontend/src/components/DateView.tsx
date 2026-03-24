@@ -160,14 +160,14 @@ export default function DateView({ showMargins }: { showMargins: boolean }) {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-semibold text-gray-900 text-sm">{item.item}</p>
                           {isWithBill && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">+18% GST</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">With Bill</span>
                           )}
                           {isWithoutBill && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Without Bill</span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {item.quantity} × ₹{fmt(item.price)}
+                          {item.quantity}{item.unit ? ` ${item.unit}` : ''} × ₹{fmt(item.price)}
                         </p>
                         {isWithBill && totalWithGst !== null && (
                           <p className="text-xs text-green-700 mt-0.5">

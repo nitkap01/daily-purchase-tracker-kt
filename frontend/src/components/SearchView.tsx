@@ -212,7 +212,7 @@ export default function SearchView({ showMargins }: { showMargins: boolean }) {
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {entry.quantity} × ₹{fmt(entry.price)} (buy)
+                          {entry.quantity}{entry.unit ? ` ${entry.unit}` : ''} × ₹{fmt(entry.price)} (buy)
                         </p>
                         {entry.selling_price && entry.selling_price > 0 && (
                           <p className="text-xs text-indigo-500 mt-0.5">

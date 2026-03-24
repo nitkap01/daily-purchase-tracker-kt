@@ -97,7 +97,7 @@ async def get_items_by_date(date: str):
         return {"date": date, "items": [], "total": 0.0}
 
     # Build item list, including optional columns
-    optional_cols = ["bill_type", "seller", "selling_price"]
+    optional_cols = ["bill_type", "seller", "selling_price", "unit"]
     base_cols = ["item", "quantity", "price", "amount"]
     cols = base_cols + [c for c in optional_cols if c in day_df.columns]
     items = day_df[cols].to_dict(orient="records")
@@ -144,7 +144,7 @@ async def get_item_history(
     if item_df.empty:
         raise HTTPException(status_code=404, detail=f"Item '{item}' not found.")
 
-    optional_cols = ["bill_type", "seller", "selling_price"]
+    optional_cols = ["bill_type", "seller", "selling_price", "unit"]
     base_cols = ["date_str", "quantity", "price", "amount"]
     hist_cols = base_cols + [c for c in optional_cols if c in item_df.columns]
 

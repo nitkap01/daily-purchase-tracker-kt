@@ -6,6 +6,7 @@ export interface PurchaseItem {
   bill_type?: string       // 'W' = With Bill (18% GST), 'WB' = Without Bill
   seller?: string
   selling_price?: number
+  unit?: string
 }
 
 export interface DateData {
@@ -22,6 +23,7 @@ export interface HistoryEntry {
   bill_type?: string
   seller?: string
   selling_price?: number
+  unit?: string
 }
 
 export interface ItemHistory {

@@ -211,7 +211,7 @@ export default function ItemDetail({ item, onBack, showMargins = true }: Props) 
                           )}
                         </div>
                         <p className="text-xs text-gray-500">
-                          {entry.quantity} × ₹{fmt(entry.price)} (buy)
+                          {entry.quantity}{entry.unit ? ` ${entry.unit}` : ''} × ₹{fmt(entry.price)} (buy)
                         </p>
                         {entry.selling_price && entry.selling_price > 0 && (
                           <p className="text-xs text-indigo-500 mt-0.5">

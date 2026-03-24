@@ -58,6 +58,12 @@ async def fetch_sheet_data() -> pd.DataFrame:
     else:
         df["selling_price"] = 0.0
 
+    if "unit" in df.columns:
+        df["unit"] = df["unit"].astype(str).str.strip()
+        df.loc[df["unit"].str.lower() == "nan", "unit"] = ""
+    else:
+        df["unit"] = ""
+
     # Clean item text
     df["item"] = df["item"].astype(str).str.strip()
     df = df[df["item"].str.len() > 0].copy()
