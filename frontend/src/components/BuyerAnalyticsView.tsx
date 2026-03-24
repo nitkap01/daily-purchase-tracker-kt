@@ -283,68 +283,82 @@ export default function BuyerAnalyticsView() {
       {/* Analytics */}
       {!loading && analytics && (
         <>
-          {/* Summary strip */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
-              <p className="text-xs text-gray-400 dark:text-slate-500">Base Total</p>
-              <p className="font-bold text-indigo-600 text-base mt-0.5">₹{fmt(analytics.total_spent)}</p>
-              {hasAnyGst && (
-                <p className="text-[10px] text-green-600 dark:text-green-400 font-medium mt-0.5">
-                  +GST ₹{fmt(gstTotal)}<br />
-                  = ₹{fmt(analytics.total_spent + gstTotal)}
-                </p>
-              )}
+          {/* Summary panel */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+
+            {/* Base Total row */}
+            <div className="flex items-start justify-between gap-4 px-4 py-4 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Base Total</p>
+                <p className="text-2xl font-bold text-indigo-600 mt-1">₹{fmt(analytics.total_spent)}</p>
+                {hasAnyGst && (
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">
+                    +GST ₹{fmt(gstTotal)} = ₹{fmt(analytics.total_spent + gstTotal)}
+                  </p>
+                )}
+              </div>
               {(analytics.with_bill_spent > 0 || analytics.without_bill_spent > 0) && (
-                <div className="mt-1.5 space-y-0.5 text-left">
+                <div className="flex flex-col gap-2 items-end shrink-0">
                   {analytics.with_bill_spent > 0 && (
-                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
-                      W ₹{fmt(analytics.with_bill_spent)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">With Bill</span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">₹{fmt(analytics.with_bill_spent)}</span>
+                    </div>
                   )}
                   {analytics.without_bill_spent > 0 && (
-                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
-                      WB ₹{fmt(analytics.without_bill_spent)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">Without Bill</span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">₹{fmt(analytics.without_bill_spent)}</span>
+                    </div>
                   )}
                 </div>
               )}
             </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
-              <p className="text-xs text-gray-400 dark:text-slate-500">Purchases</p>
-              <p className="font-bold text-gray-800 dark:text-slate-100 text-base mt-0.5">{analytics.total_purchases}</p>
-              {(analytics.with_bill_purchases > 0 || analytics.without_bill_purchases > 0) && (
-                <div className="mt-1.5 space-y-0.5 text-left">
-                  {analytics.with_bill_purchases > 0 && (
-                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
-                      W {analytics.with_bill_purchases}
-                    </p>
-                  )}
-                  {analytics.without_bill_purchases > 0 && (
-                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
-                      WB {analytics.without_bill_purchases}
-                    </p>
-                  )}
-                </div>
-              )}
+
+            {/* Purchases + Items */}
+            <div className="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-700">
+              <div className="px-4 py-4">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Purchases</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{analytics.total_purchases}</p>
+                {(analytics.with_bill_purchases > 0 || analytics.without_bill_purchases > 0) && (
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    {analytics.with_bill_purchases > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">W</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300">{analytics.with_bill_purchases} entries</span>
+                      </div>
+                    )}
+                    {analytics.without_bill_purchases > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">WB</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300">{analytics.without_bill_purchases} entries</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-4">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Unique Items</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{analytics.unique_items}</p>
+                {(analytics.with_bill_unique_items > 0 || analytics.without_bill_unique_items > 0) && (
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    {analytics.with_bill_unique_items > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">W</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300">{analytics.with_bill_unique_items} items</span>
+                      </div>
+                    )}
+                    {analytics.without_bill_unique_items > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300">WB</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300">{analytics.without_bill_unique_items} items</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
-              <p className="text-xs text-gray-400 dark:text-slate-500">Items</p>
-              <p className="font-bold text-gray-800 dark:text-slate-100 text-base mt-0.5">{analytics.unique_items}</p>
-              {(analytics.with_bill_unique_items > 0 || analytics.without_bill_unique_items > 0) && (
-                <div className="mt-1.5 space-y-0.5 text-left">
-                  {analytics.with_bill_unique_items > 0 && (
-                    <p className="text-[10px] text-green-700 dark:text-green-400 font-medium">
-                      W {analytics.with_bill_unique_items}
-                    </p>
-                  )}
-                  {analytics.without_bill_unique_items > 0 && (
-                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
-                      WB {analytics.without_bill_unique_items}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+
           </div>
 
           {/* Empty state for filtered range */}
