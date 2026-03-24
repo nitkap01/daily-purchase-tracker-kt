@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart2, ChevronDown, ChevronUp, Package, ShoppingBag, TrendingUp } from 'lucide-react'
+import { BarChart2, Calendar, ChevronDown, ChevronUp, Package, ShoppingBag, TrendingUp } from 'lucide-react'
 import { getSellers, getSellerAnalytics } from '../api'
 import type { SellerAnalytics, SellerDayHistory } from '../types'
 
@@ -14,10 +14,37 @@ const fmtDate = (d: string) =>
     weekday: 'short',
   })
 
+const todayIso = (): string => new Date().toISOString().split('T')[0]
+
+const firstOfMonthIso = (): string => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+const firstOfLastMonthIso = (): string => {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - 1)
+  return d.toISOString().split('T')[0]
+}
+
+const lastOfLastMonthIso = (): string => {
+  const d = new Date()
+  d.setDate(0)
+  return d.toISOString().split('T')[0]
+}
+
 // ── Collapsible day row ────────────────────────────────────────────────────
 
 function DayRow({ day }: { day: SellerDayHistory }) {
   const [open, setOpen] = useState(false)
+
+  const dayGstAmt = day.items.reduce(
+    (s, it) => s + (it.bill_type?.toUpperCase() === 'W' ? it.amount * 0.18 : 0),
+    0,
+  )
+  const hasGst = dayGstAmt > 0
+
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       <button
@@ -32,11 +59,19 @@ function DayRow({ day }: { day: SellerDayHistory }) {
             <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">{fmtDate(day.date)}</p>
             <p className="text-xs text-gray-400 dark:text-slate-500">
               {day.items.length} item{day.items.length !== 1 ? 's' : ''}
+              {hasGst && <span className="ml-1 text-green-600 dark:text-green-400 font-medium">· GST applicable</span>}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="text-sm font-bold text-indigo-600">₹{fmt(day.day_total)}</span>
+          <div className="text-right">
+            <p className="text-sm font-bold text-indigo-600">₹{fmt(day.day_total)}</p>
+            {hasGst && (
+              <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">
+                +GST ₹{fmt(dayGstAmt)} = ₹{fmt(day.day_total + dayGstAmt)}
+              </p>
+            )}
+          </div>
           {open
             ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-slate-500" />
             : <ChevronDown className="w-4 h-4 text-gray-400 dark:text-slate-500" />
@@ -46,29 +81,42 @@ function DayRow({ day }: { day: SellerDayHistory }) {
 
       {open && (
         <div className="bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
-          {day.items.map((it, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
-              <div className="flex items-center gap-2 min-w-0">
-                <Package className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
-                <span className="font-medium text-gray-800 dark:text-slate-200 truncate">{it.item}</span>
-                {it.bill_type && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                    it.bill_type === 'W'
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                      : 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                  }`}>
-                    {it.bill_type}
-                  </span>
+          {day.items.map((it, i) => {
+            const isWithBill = it.bill_type?.toUpperCase() === 'W'
+            const isWithoutBill = it.bill_type?.toUpperCase() === 'WB'
+            const gstAmt = isWithBill ? it.amount * 0.18 : 0
+            return (
+              <div key={i} className="px-4 py-2.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Package className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
+                    <span className="font-medium text-gray-800 dark:text-slate-200 truncate">{it.item}</span>
+                    {isWithBill && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                        With Bill
+                      </span>
+                    )}
+                    {isWithoutBill && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                        Without Bill
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p className="font-semibold text-gray-800 dark:text-slate-100">₹{fmt(it.amount)}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">
+                      {it.quantity} × ₹{fmt(it.price)}
+                    </p>
+                  </div>
+                </div>
+                {isWithBill && (
+                  <p className="mt-0.5 ml-5 text-xs text-green-700 dark:text-green-400">
+                    GST 18% ₹{fmt(gstAmt)} · After tax ₹{fmt(it.amount + gstAmt)}
+                  </p>
                 )}
               </div>
-              <div className="text-right shrink-0 ml-3">
-                <p className="font-semibold text-gray-800 dark:text-slate-100">₹{fmt(it.amount)}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">
-                  {it.quantity} × ₹{fmt(it.price)}
-                </p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
@@ -85,6 +133,10 @@ export default function BuyerAnalyticsView() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Date range — default: 1st of current month → today
+  const [fromDate, setFromDate] = useState(firstOfMonthIso)
+  const [toDate, setToDate] = useState(todayIso)
+
   useEffect(() => {
     getSellers()
       .then((r) => setSellers(r.sellers))
@@ -96,11 +148,40 @@ export default function BuyerAnalyticsView() {
     if (!selected) { setAnalytics(null); return }
     setLoading(true)
     setError(null)
-    getSellerAnalytics(selected)
+    getSellerAnalytics(selected, fromDate || undefined, toDate || undefined)
       .then((r) => setAnalytics(r))
       .catch(() => setError('Could not load data for this seller.'))
       .finally(() => setLoading(false))
-  }, [selected])
+  }, [selected, fromDate, toDate])
+
+  const applyPreset = (preset: 'month' | 'lastMonth' | 'all') => {
+    if (preset === 'month') { setFromDate(firstOfMonthIso()); setToDate(todayIso()) }
+    else if (preset === 'lastMonth') { setFromDate(firstOfLastMonthIso()); setToDate(lastOfLastMonthIso()) }
+    else { setFromDate(''); setToDate('') }
+  }
+
+  const activePreset = (): 'month' | 'lastMonth' | 'all' | null => {
+    if (fromDate === firstOfMonthIso() && toDate === todayIso()) return 'month'
+    if (fromDate === firstOfLastMonthIso() && toDate === lastOfLastMonthIso()) return 'lastMonth'
+    if (!fromDate && !toDate) return 'all'
+    return null
+  }
+  const preset = activePreset()
+
+  // GST-inclusive total computed from purchase history
+  const gstTotal = analytics
+    ? analytics.purchase_history.reduce(
+        (s, day) => s + day.items.reduce((is, it) =>
+          is + (it.bill_type?.toUpperCase() === 'W' ? it.amount * 0.18 : 0), 0), 0)
+    : 0
+  const hasAnyGst = gstTotal > 0
+
+  const presetBtnCls = (active: boolean) =>
+    `text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
+      active
+        ? 'bg-indigo-600 text-white border-indigo-600'
+        : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-indigo-400'
+    }`
 
   return (
     <div className="space-y-4">
@@ -135,6 +216,51 @@ export default function BuyerAnalyticsView() {
         </select>
       </div>
 
+      {/* Date filter */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+          <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+            Date Range
+          </p>
+        </div>
+
+        {/* Quick presets */}
+        <div className="flex flex-wrap gap-2">
+          <button className={presetBtnCls(preset === 'month')} onClick={() => applyPreset('month')}>
+            This Month
+          </button>
+          <button className={presetBtnCls(preset === 'lastMonth')} onClick={() => applyPreset('lastMonth')}>
+            Last Month
+          </button>
+          <button className={presetBtnCls(preset === 'all')} onClick={() => applyPreset('all')}>
+            All Time
+          </button>
+        </div>
+
+        {/* Custom from/to */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1">From</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1">To</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Loading */}
       {loading && (
         <div className="space-y-3">
@@ -160,8 +286,14 @@ export default function BuyerAnalyticsView() {
           {/* Summary strip */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
-              <p className="text-xs text-gray-400 dark:text-slate-500">Total Value</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">Base Total</p>
               <p className="font-bold text-indigo-600 text-base mt-0.5">₹{fmt(analytics.total_spent)}</p>
+              {hasAnyGst && (
+                <p className="text-[10px] text-green-600 dark:text-green-400 font-medium mt-0.5">
+                  +GST ₹{fmt(gstTotal)}<br />
+                  = ₹{fmt(analytics.total_spent + gstTotal)}
+                </p>
+              )}
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3 text-center">
               <p className="text-xs text-gray-400 dark:text-slate-500">Purchases</p>
@@ -173,57 +305,68 @@ export default function BuyerAnalyticsView() {
             </div>
           </div>
 
+          {/* Empty state for filtered range */}
+          {analytics.purchase_history.length === 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-8 text-center">
+              <p className="text-gray-400 dark:text-slate-500 text-sm">No purchases in this date range</p>
+            </div>
+          )}
+
           {/* Item breakdown */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-indigo-600" />
-              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
-                By Item
-              </p>
-            </div>
-            <div className="divide-y divide-slate-50 dark:divide-slate-700">
-              {analytics.item_summary.map((it, i) => {
-                const pct = analytics.total_spent > 0
-                  ? (it.spent / analytics.total_spent) * 100
-                  : 0
-                return (
-                  <div key={i} className="px-4 py-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-semibold text-gray-800 dark:text-slate-100 truncate">
-                          {it.item}
-                        </span>
-                        <span className="text-xs text-gray-400 dark:text-slate-500 shrink-0">
-                          ×{it.count}
-                        </span>
+          {analytics.item_summary.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+                  By Item
+                </p>
+              </div>
+              <div className="divide-y divide-slate-50 dark:divide-slate-700">
+                {analytics.item_summary.map((it, i) => {
+                  const pct = analytics.total_spent > 0
+                    ? (it.spent / analytics.total_spent) * 100
+                    : 0
+                  return (
+                    <div key={i} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-slate-100 truncate">
+                            {it.item}
+                          </span>
+                          <span className="text-xs text-gray-400 dark:text-slate-500 shrink-0">
+                            ×{it.count}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0 ml-3">
+                          <p className="text-sm font-bold text-indigo-600">₹{fmt(it.spent)}</p>
+                          <p className="text-xs text-gray-400 dark:text-slate-500">{it.qty} units</p>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0 ml-3">
-                        <p className="text-sm font-bold text-indigo-600">₹{fmt(it.spent)}</p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500">{it.qty} units</p>
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </div>
-                    {/* Progress bar */}
-                    <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 rounded-full"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Date-wise history */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-1">
-              Purchase History
-            </p>
-            {analytics.purchase_history.map((day, i) => (
-              <DayRow key={i} day={day} />
-            ))}
-          </div>
+          {analytics.purchase_history.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-1">
+                Purchase History
+              </p>
+              {analytics.purchase_history.map((day, i) => (
+                <DayRow key={i} day={day} />
+              ))}
+            </div>
+          )}
         </>
       )}
 

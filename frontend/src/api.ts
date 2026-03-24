@@ -56,8 +56,8 @@ export const getAppStatus = (): Promise<AppStatus> =>
 export const getSellers = (): Promise<{ sellers: string[] }> =>
   api.get('/sellers').then((r) => r.data)
 
-export const getSellerAnalytics = (seller: string): Promise<SellerAnalytics> =>
-  api.get('/seller-analytics', { params: { seller } }).then((r) => r.data)
+export const getSellerAnalytics = (seller: string, fromDate?: string, toDate?: string): Promise<SellerAnalytics> =>
+  api.get('/seller-analytics', { params: { seller, from_date: fromDate || undefined, to_date: toDate || undefined } }).then((r) => r.data)
 
 export const syncSheetToDb = (): Promise<{ status: string; rows_synced: number }> =>
   api.post('/sync/sheet-to-db').then((r) => r.data)

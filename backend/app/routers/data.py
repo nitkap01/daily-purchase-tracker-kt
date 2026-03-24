@@ -480,8 +480,10 @@ async def get_sellers():
 @router.get("/seller-analytics")
 async def get_seller_analytics(
     seller: str = Query(..., min_length=1, max_length=200),
+    from_date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    to_date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
 ):
-    """Return full purchase breakdown for a given seller."""
+    """Return full purchase breakdown for a given seller, optionally filtered by date range."""
     df = _require_data()
     if "seller" not in df.columns:
         raise HTTPException(status_code=404, detail="No seller data available.")
@@ -489,6 +491,22 @@ async def get_seller_analytics(
     sel_df = df[df["seller"].str.strip().str.lower() == seller.strip().lower()]
     if sel_df.empty:
         raise HTTPException(status_code=404, detail=f"Seller '{seller}' not found.")
+
+    # Apply date range filter
+    if from_date:
+        sel_df = sel_df[sel_df["date_str"] >= from_date]
+    if to_date:
+        sel_df = sel_df[sel_df["date_str"] <= to_date]
+
+    if sel_df.empty:
+        return {
+            "seller": seller,
+            "total_spent": 0.0,
+            "total_purchases": 0,
+            "unique_items": 0,
+            "item_summary": [],
+            "purchase_history": [],
+        }
 
     # Item-level summary
     item_grp = (
