@@ -15,12 +15,7 @@ const addDays = (dateStr: string, days: number): string => {
   return d.toISOString().split('T')[0]
 }
 
-const fmtDisplay = (dateStr: string): string => {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-export default function DateView() {
+export default function DateView({ showMargins }: { showMargins: boolean }) {
   const [date, setDate] = useState(today)
   const [data, setData] = useState<DateData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,7 +45,7 @@ export default function DateView() {
 
   // Show item detail when an item is selected
   if (selectedItem) {
-    return <ItemDetail item={selectedItem} onBack={() => setSelectedItem(null)} />
+    return <ItemDetail item={selectedItem} onBack={() => setSelectedItem(null)} showMargins={showMargins} />
   }
 
   return (
@@ -72,19 +67,14 @@ export default function DateView() {
           >
             <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
-          <div className="relative flex-1">
-            <input
-              id="date-picker"
-              type="date"
-              value={date}
-              max={today()}
-              onChange={(e) => setDate(e.target.value)}
-              className="absolute inset-0 w-full opacity-0 cursor-pointer"
-            />
-            <div className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-center font-medium text-gray-800 bg-white pointer-events-none">
-              {fmtDisplay(date)}
-            </div>
-          </div>
+          <input
+            id="date-picker"
+            type="date"
+            value={date}
+            max={today()}
+            onChange={(e) => { if (e.target.value) setDate(e.target.value) }}
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          />
           <button
             onClick={() => setDate((d) => { const next = addDays(d, 1); return next <= today() ? next : d })}
             disabled={date >= today()}
@@ -145,29 +135,68 @@ export default function DateView() {
           </p>
 
           <div className="space-y-2">
-            {data.items.map((item, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedItem(item.item)}
-                className="w-full text-left bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-3 hover:shadow-md hover:border-indigo-300 active:scale-[0.99] transition-all"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                    <Package className="w-4 h-4 text-indigo-600" />
+            {data.items.map((item, i) => {
+              const isWithBill = item.bill_type?.toUpperCase() === 'W'
+              const isWithoutBill = item.bill_type?.toUpperCase() === 'WB'
+              const gstAmount = isWithBill ? item.amount * 0.18 : 0
+              const totalWithGst = isWithBill ? item.amount + gstAmount : null
+              const profitPct =
+                item.selling_price && item.selling_price > 0 && item.price > 0
+                  ? ((item.selling_price - item.price) / item.price) * 100
+                  : null
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelectedItem(item.item)}
+                  className="w-full text-left bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-indigo-300 active:scale-[0.99] transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <Package className="w-4 h-4 text-indigo-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm">{item.item}</p>
+                          {isWithBill && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">+18% GST</span>
+                          )}
+                          {isWithoutBill && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Without Bill</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {item.quantity} × ₹{fmt(item.price)}
+                        </p>
+                        {isWithBill && totalWithGst !== null && (
+                          <p className="text-xs text-green-700 mt-0.5">
+                            GST ₹{fmt(gstAmount)} · After tax ₹{fmt(totalWithGst)}
+                          </p>
+                        )}
+                        {item.seller && (
+                          <p className="text-xs text-gray-400 mt-0.5">Seller: {item.seller}</p>
+                        )}
+                        {item.selling_price && item.selling_price > 0 && (
+                          <p className="text-xs text-indigo-500 mt-0.5">
+                            Sell {showMargins ? `₹${fmt(item.selling_price)}` : <span className="tracking-widest font-mono">••••</span>}
+                            {profitPct !== null && (
+                              <span className={`ml-1 font-semibold ${profitPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {showMargins ? `(${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}%)` : <span className="tracking-widest font-mono">••••</span>}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-indigo-600 text-sm">₹{fmt(item.amount)}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">tap for history</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{item.item}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {item.quantity} × ₹{fmt(item.price)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-indigo-600 text-sm">₹{fmt(item.amount)}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">tap for history</p>
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
 
           {/* Total banner */}

@@ -35,7 +35,7 @@ echo ""
 
 # ── 4. Commit the version bump ────────────────────────────────────────────────
 read -rp "Commit version bump to git? [y/N] " COMMIT
-if [[ "${COMMIT,,}" == "y" ]]; then
+if [[ "$(echo "${COMMIT}" | tr '[:upper:]' '[:lower:]')" == "y" ]]; then
   git add "$VERSION_FILE"
   git commit -m "chore(release): bump version to ${VERSION}"
   git push

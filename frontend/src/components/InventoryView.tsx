@@ -1,26 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Layers, Pencil, X } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { getInventory, renameItem } from '../api'
 import type { InventoryItem } from '../types'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)
-
-const PALETTE = [
-  '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6',
-  '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899',
-  '#14b8a6', '#a855f7', '#eab308', '#64748b', '#0ea5e9',
-]
 
 function RenameCell({ item, onRenamed }: { item: string; onRenamed: (oldName: string, newName: string) => void }) {
   const [editing, setEditing] = useState(false)
@@ -198,75 +182,6 @@ export default function InventoryView() {
                     ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          {/* Purchase count bar chart */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Purchase Frequency</p>
-            <ResponsiveContainer width="100%" height={Math.max(220, items.length * 36)}>
-              <BarChart
-                data={[...items].sort((a, b) => b.purchase_count - a.purchase_count)}
-                layout="vertical"
-                margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis
-                  type="number"
-                  allowDecimals={false}
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="item"
-                  width={90}
-                  tick={{ fontSize: 11, fill: '#374151' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  formatter={(v: number) => [v, 'Purchases']}
-                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                />
-                <Bar dataKey="purchase_count" radius={[0, 4, 4, 0]}>
-                  {[...items]
-                    .sort((a, b) => b.purchase_count - a.purchase_count)
-                    .map((_, i) => (
-                      <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                    ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Ranked list */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-widest">Top Items by Purchases</p>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {items.slice(0, 10).map((item, i) => (
-                <div key={item.item} className="flex items-center gap-3 px-4 py-3">
-                  <span
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 text-white"
-                    style={{ background: PALETTE[i % PALETTE.length] }}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.item}</p>
-                    <p className="text-xs text-gray-500">
-                      {item.purchase_count} purchase{item.purchase_count !== 1 ? 's' : ''} · avg ₹{fmt(item.avg_price)}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-indigo-600">₹{fmt(item.total_spent)}</p>
-                    <p className="text-xs text-gray-400">total</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </>

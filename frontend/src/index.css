@@ -12,3 +12,84 @@
         -moz-osx-font-smoothing: grayscale;
     }
 }
+
+/* ─────────────────── Dark theme global overrides ─────────────────────── */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Surfaces */
+html.dark .bg-white          { background-color: #1e293b; }
+html.dark .bg-slate-50       { background-color: #0f172a; }
+html.dark .bg-slate-100      { background-color: #273549; }
+
+/* Borders */
+html.dark .border-slate-50,
+html.dark .border-slate-100,
+html.dark .border-slate-200  { border-color: #334155; }
+html.dark .border-slate-300  { border-color: #475569; }
+
+/* Dividers */
+html.dark .divide-y > * + *  { border-color: #334155; }
+
+/* Text */
+html.dark .text-gray-900,
+html.dark .text-gray-800     { color: #f1f5f9; }
+html.dark .text-gray-700,
+html.dark .text-gray-600     { color: #cbd5e1; }
+html.dark .text-gray-500     { color: #94a3b8; }
+html.dark .text-gray-400     { color: #64748b; }
+
+/* Sticky header */
+html.dark header {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+/* Shadows */
+html.dark .shadow-sm {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5);
+}
+
+/* Form controls */
+html.dark input:not([type='submit']):not([type='button']):not([type='range']):not([type='checkbox']):not([type='radio']),
+html.dark textarea,
+html.dark select {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+/* Indigo tints */
+html.dark .bg-indigo-50  { background-color: rgba(79,70,229,0.15); }
+html.dark .bg-indigo-100 { background-color: rgba(79,70,229,0.2); }
+html.dark .text-indigo-900 { color: #c7d2fe; }
+html.dark .bg-indigo-50.text-indigo-700 { color: #a5b4fc; }
+
+/* Emerald tints */
+html.dark .bg-emerald-50  { background-color: rgba(16,185,129,0.1); }
+html.dark .text-emerald-900 { color: #a7f3d0; }
+
+/* Amber tints */
+html.dark .bg-amber-50   { background-color: rgba(245,158,11,0.1); }
+html.dark .border-amber-200 { border-color: rgba(245,158,11,0.3); }
+html.dark .text-amber-700 { color: #fcd34d; }
+
+/* Red tints */
+html.dark .bg-red-50     { background-color: rgba(239,68,68,0.1); }
+html.dark .border-red-200 { border-color: rgba(239,68,68,0.3); }
+
+/* Hover states */
+html.dark .hover\:bg-slate-50:hover  { background-color: #334155; }
+html.dark .hover\:bg-slate-100:hover { background-color: #334155; }
+html.dark .hover\:bg-indigo-100:hover { background-color: rgba(79,70,229,0.25); }

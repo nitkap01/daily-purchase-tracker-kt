@@ -36,9 +36,27 @@ async def fetch_sheet_data() -> pd.DataFrame:
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
 
     # Coerce numerics
-    for col in ("quantity", "price", "amount", "total"):
+    for col in ("quantity", "price", "amount", "total", "selling price"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+
+    # Normalise optional columns
+    # Billing type: column "w/wb" with values W (With Bill) or WB (Without Bill)
+    if "w/wb" in df.columns:
+        df["bill_type"] = df["w/wb"].astype(str).str.strip().str.upper()
+    else:
+        df["bill_type"] = ""
+
+    if "seller" in df.columns:
+        df["seller"] = df["seller"].astype(str).str.strip()
+        df.loc[df["seller"].str.lower() == "nan", "seller"] = ""
+    else:
+        df["seller"] = ""
+
+    if "selling price" in df.columns:
+        df.rename(columns={"selling price": "selling_price"}, inplace=True)
+    else:
+        df["selling_price"] = 0.0
 
     # Clean item text
     df["item"] = df["item"].astype(str).str.strip()

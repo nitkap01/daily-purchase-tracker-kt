@@ -27,13 +27,13 @@ beforeEach(() => {
 describe('App', () => {
   it('renders header with brand title', () => {
     render(<App />)
-    expect(screen.getByText('Purchase Tracker')).toBeInTheDocument()
+    expect(screen.getByText('Kapoor Traders CMS')).toBeInTheDocument()
   })
 
   it('renders both tab buttons', () => {
     render(<App />)
     expect(screen.getByText('By Date')).toBeInTheDocument()
-    expect(screen.getByText('Search Item')).toBeInTheDocument()
+    expect(screen.getByText('Search')).toBeInTheDocument()
   })
 
   it('renders the refresh button', () => {

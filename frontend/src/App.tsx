@@ -1,24 +1,28 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Calendar, Layers, MessageCircle, PiggyBank, PlusCircle, RefreshCw, Search, ShoppingCart } from 'lucide-react'
+import { Activity, BarChart2, Calendar, ClipboardList, CreditCard, Eye, EyeOff, Layers, MessageCircle, Moon, PiggyBank, RefreshCw, Search, ShoppingCart, Sun } from 'lucide-react'
 import DateView from './components/DateView'
 import SearchView from './components/SearchView'
-import AddItemView from './components/AddItemView'
 import InventoryView from './components/InventoryView'
 import CashView from './components/CashView'
 import StatusView from './components/StatusView'
 import ChatView from './components/ChatView'
-import { getHealth, refreshData } from './api'
+import OrderView from './components/OrderView'
+import BuyerAnalyticsView from './components/BuyerAnalyticsView'
+import PaymentsView from './components/PaymentsView'
+import { exportCsv, getHealth, refreshData } from './api'
 import type { HealthData } from './types'
 import { APP_VERSION } from './version'
 
-type Tab = 'date' | 'search' | 'add' | 'inventory' | 'cash' | 'status' | 'chat'
+type Tab = 'date' | 'search' | 'inventory' | 'cash' | 'order' | 'analytics' | 'payments' | 'status' | 'chat'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
   { id: 'search', label: 'Search', icon: <Search className="w-4 h-4" /> },
-  { id: 'add', label: 'Add', icon: <PlusCircle className="w-4 h-4" /> },
   { id: 'inventory', label: 'Inventory', icon: <Layers className="w-4 h-4" /> },
   { id: 'cash', label: 'Cash', icon: <PiggyBank className="w-4 h-4" /> },
+  { id: 'order', label: 'Orders', icon: <ClipboardList className="w-4 h-4" /> },
+  { id: 'analytics', label: 'Buyers', icon: <BarChart2 className="w-4 h-4" /> },
+  { id: 'payments', label: 'Payments', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
   { id: 'chat', label: 'AI Chat', icon: <MessageCircle className="w-4 h-4" /> },
 ]
@@ -28,6 +32,28 @@ export default function App() {
   const [health, setHealth] = useState<HealthData | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [showMargins, setShowMargins] = useState(() => {
+    return localStorage.getItem('showMargins') !== 'false'
+  })
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [dark])
+
+  useEffect(() => {
+    localStorage.setItem('showMargins', showMargins ? 'true' : 'false')
+  }, [showMargins])
 
   const loadHealth = useCallback(async () => {
     try {
@@ -57,6 +83,25 @@ export default function App() {
     }
   }
 
+  const handleExportCsv = async () => {
+    setExporting(true)
+    try {
+      const blob = await exportCsv()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kapoor_traders_${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently ignore — user sees no state change
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const formatRefresh = (iso: string | null): string => {
     if (!iso) return 'Never'
     const d = new Date(iso)  // ISO already has timezone offset from Python
@@ -78,7 +123,7 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <h1 className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
-                Kapoor Trader Daily Purchase Tracker
+                Kapoor Traders CMS
               </h1>
               <p className="text-xs text-gray-400 leading-tight truncate">
                 {health?.last_refreshed
@@ -89,12 +134,42 @@ export default function App() {
           </button>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {refreshMsg && (
-              <span className="text-xs text-indigo-600 font-medium hidden sm:block max-w-[180px] truncate">
-                {refreshMsg}
-              </span>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {refreshMsg && (
+                <span className="text-xs text-indigo-600 font-medium hidden sm:block max-w-[180px] truncate">
+                  {refreshMsg}
+                </span>
+              )}
+              {/* Eye toggle — show/hide margins */}
+              <button
+                onClick={() => setShowMargins((v) => !v)}
+                title={showMargins ? 'Hide margins & selling prices' : 'Show margins & selling prices'}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors active:scale-95 ${
+                  showMargins
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                    : 'border-slate-200 bg-slate-50 text-gray-400 hover:bg-slate-100'
+                }`}
+              >
+                {showMargins ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+              {/* CSV export */}
+              <button
+                onClick={handleExportCsv}
+                disabled={exporting}
+                title="Download purchases as CSV"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95 disabled:opacity-50 hidden sm:flex"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setDark((d) => !d)}
+                title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95"
+              >
+                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -104,8 +179,8 @@ export default function App() {
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
+            </div>
           </div>
-        </div>
 
         {/* ── Tabs ── */}
         <div className="max-w-2xl mx-auto px-4 flex border-t border-slate-100 overflow-x-auto">
@@ -141,11 +216,13 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'date' && <DateView />}
-        {activeTab === 'search' && <SearchView />}
-        {activeTab === 'add' && <AddItemView />}
+        {activeTab === 'date' && <DateView showMargins={showMargins} />}
+        {activeTab === 'search' && <SearchView showMargins={showMargins} />}
         {activeTab === 'inventory' && <InventoryView />}
         {activeTab === 'cash' && <CashView />}
+        {activeTab === 'order' && <OrderView />}
+        {activeTab === 'analytics' && <BuyerAnalyticsView />}
+        {activeTab === 'payments' && <PaymentsView />}
         {activeTab === 'status' && <StatusView />}
         {activeTab === 'chat' && <ChatView />}
       </main>

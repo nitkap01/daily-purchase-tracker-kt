@@ -20,14 +20,14 @@ describe('DateView', () => {
   })
 
   it('renders a date input defaulting to today', () => {
-    render(<DateView />)
+    render(<DateView showMargins={true} />)
     const input = document.getElementById('date-picker') as HTMLInputElement
     expect(input).toBeTruthy()
     expect(input.type).toBe('date')
   })
 
   it('shows items after data loads', async () => {
-    render(<DateView />)
+    render(<DateView showMargins={true} />)
     await waitFor(() => {
       expect(screen.getByText('Apple')).toBeInTheDocument()
       expect(screen.getByText('Banana')).toBeInTheDocument()
@@ -35,7 +35,7 @@ describe('DateView', () => {
   })
 
   it('shows total amount', async () => {
-    render(<DateView />)
+    render(<DateView showMargins={true} />)
     await waitFor(() => {
       expect(screen.getByText(/25\.00/)).toBeInTheDocument()
     })
@@ -43,7 +43,7 @@ describe('DateView', () => {
 
   it('shows empty state when no items', async () => {
     vi.mocked(api.getDateItems).mockResolvedValue({ date: today, items: [], total: 0 })
-    render(<DateView />)
+    render(<DateView showMargins={true} />)
     await waitFor(() => {
       expect(screen.getByText(/No purchases found/i)).toBeInTheDocument()
     })
@@ -51,7 +51,7 @@ describe('DateView', () => {
 
   it('shows error state on API failure', async () => {
     vi.mocked(api.getDateItems).mockRejectedValue(new Error('Network error'))
-    render(<DateView />)
+    render(<DateView showMargins={true} />)
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })

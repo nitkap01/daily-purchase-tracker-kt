@@ -25,18 +25,18 @@ describe('SearchView', () => {
   })
 
   it('renders search input', () => {
-    render(<SearchView />)
+    render(<SearchView showMargins={true} />)
     expect(screen.getByPlaceholderText(/Rice, Oil/i)).toBeInTheDocument()
   })
 
   it('shows empty state initially', () => {
-    render(<SearchView />)
+    render(<SearchView showMargins={true} />)
     expect(screen.getByText(/Start typing/i)).toBeInTheDocument()
   })
 
   it('fetches suggestions as user types', async () => {
     const user = userEvent.setup()
-    render(<SearchView />)
+    render(<SearchView showMargins={true} />)
     await user.type(screen.getByPlaceholderText(/Rice, Oil/i), 'app')
     await waitFor(() => {
       expect(api.getSearchSuggestions).toHaveBeenCalledWith('app')
@@ -45,7 +45,7 @@ describe('SearchView', () => {
 
   it('shows history after selecting a suggestion', async () => {
     const user = userEvent.setup()
-    render(<SearchView />)
+    render(<SearchView showMargins={true} />)
     await user.type(screen.getByPlaceholderText(/Rice, Oil/i), 'app')
     await waitFor(() => expect(screen.getByText('Apple')).toBeInTheDocument())
     await user.click(screen.getByText('Apple'))

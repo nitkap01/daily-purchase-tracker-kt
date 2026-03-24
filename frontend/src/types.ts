@@ -3,6 +3,9 @@ export interface PurchaseItem {
   quantity: number
   price: number
   amount: number
+  bill_type?: string       // 'W' = With Bill (18% GST), 'WB' = Without Bill
+  seller?: string
+  selling_price?: number
 }
 
 export interface DateData {
@@ -16,6 +19,9 @@ export interface HistoryEntry {
   quantity: number
   price: number
   amount: number
+  bill_type?: string
+  seller?: string
+  selling_price?: number
 }
 
 export interface ItemHistory {
@@ -38,6 +44,8 @@ export interface InventoryItem {
   total_quantity: number
   total_spent: number
   avg_price: number
+  latest_price?: number
+  selling_price?: number
 }
 
 export interface AddItemPayload {
@@ -52,12 +60,46 @@ export interface CashEntry {
   date: string
   amount: number
   note: string
+  type: 'credit' | 'debit'
 }
 
 export interface AddCashPayload {
   date: string
   amount: number
   note: string
+  type: 'credit' | 'debit'
+}
+
+// ── Seller / Buyer Analytics ────────────────────────────────────────────────
+export interface SellerPurchaseRow {
+  item: string
+  quantity: number
+  price: number
+  amount: number
+  bill_type?: string
+  selling_price?: number
+}
+
+export interface SellerDayHistory {
+  date: string
+  items: SellerPurchaseRow[]
+  day_total: number
+}
+
+export interface SellerItemSummary {
+  item: string
+  qty: number
+  spent: number
+  count: number
+}
+
+export interface SellerAnalytics {
+  seller: string
+  total_spent: number
+  total_purchases: number
+  unique_items: number
+  item_summary: SellerItemSummary[]
+  purchase_history: SellerDayHistory[]
 }
 
 // ── Status ──────────────────────────────────────────────────────────────────
@@ -94,4 +136,29 @@ export interface ChatMessage {
 export interface RenameItemPayload {
   old_name: string
   new_name: string
+}
+
+// ── Payments ────────────────────────────────────────────────────────────────
+export interface Payment {
+  id: number
+  party_name: string
+  amount: number
+  purchase_date: string
+  notes: string
+  status: 'pending' | 'received'
+  received_at: string | null
+  created_at: string | null
+  days_to_pay: number | null
+}
+
+export interface PaymentsData {
+  pending: Payment[]
+  received: Payment[]
+}
+
+export interface CreatePaymentPayload {
+  party_name: string
+  amount: number
+  purchase_date: string
+  notes: string
 }

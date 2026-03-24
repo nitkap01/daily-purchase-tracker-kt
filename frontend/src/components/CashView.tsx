@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import { PiggyBank, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react'
+import { PiggyBank, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X, TrendingUp, TrendingDown } from 'lucide-react'
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,6 +14,11 @@ import { addCashEntry, getCashEntries, updateCashEntry, deleteCashEntry } from '
 import type { CashEntry } from '../types'
 
 const today = (): string => new Date().toISOString().split('T')[0]
+
+const currentMonthStart = (): string => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
 
 const shortDate = (d: string) => {
   const [y, m, day] = d.split('-')
@@ -50,26 +53,166 @@ const getMonthLabel = (dateStr: string): string => {
 const inputCls =
   'w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white'
 
-type SummaryRow = { label: string; amount: number }
+type SummaryRow = { label: string; credit: number; debit: number; net: number }
 
-function SummaryTabs({
-  weeklyTotals,
-  monthlyTotals,
-  fmt,
-  fmtShort,
-}: {
-  weeklyTotals: SummaryRow[]
-  monthlyTotals: SummaryRow[]
-  fmt: (n: number) => string
-  fmtShort: (n: number) => string
-}) {
-  const [tab, setTab] = useState<'weekly' | 'monthly'>('monthly')
-  const rows = tab === 'weekly' ? weeklyTotals : monthlyTotals
-  const max = Math.max(...rows.map((r) => r.amount), 1)
+// ── Daily Cash Flow Chart ────────────────────────────────────────────────
+
+function DailyCashFlow({ entries }: { entries: CashEntry[] }) {
+  const [fromDate, setFromDate] = useState(currentMonthStart)
+  const [toDate, setToDate] = useState(today)
+
+  const dailyData = (() => {
+    const map = new Map<string, { credit: number; debit: number }>()
+    entries
+      .filter((e) => e.date >= fromDate && e.date <= toDate)
+      .forEach((e) => {
+        const prev = map.get(e.date) ?? { credit: 0, debit: 0 }
+        if (e.type === 'debit') {
+          map.set(e.date, { ...prev, debit: prev.debit + e.amount })
+        } else {
+          map.set(e.date, { ...prev, credit: prev.credit + e.amount })
+        }
+      })
+    return Array.from(map.entries())
+      .map(([date, v]) => ({
+        date: shortDate(date),
+        credit: v.credit,
+        debit: v.debit,
+        net: v.credit - v.debit,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  })()
+
+  const totalCredit = dailyData.reduce((s, r) => s + r.credit, 0)
+  const totalDebit = dailyData.reduce((s, r) => s + r.debit, 0)
+  const netCash = totalCredit - totalDebit
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Tab header */}
+      <div className="px-4 py-3 border-b border-slate-100">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Daily Cash Flow</p>
+      </div>
+      <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-gray-500">From</label>
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-gray-500">To</label>
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate}
+            max={today()}
+            onChange={(e) => setToDate(e.target.value)}
+            className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+        <button
+          onClick={() => { setFromDate(currentMonthStart()); setToDate(today()) }}
+          className="text-xs font-medium px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+        >
+          This Month
+        </button>
+      </div>
+
+      <div className="px-4 py-3 flex gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 bg-emerald-50 rounded-lg px-3 py-1.5">
+          <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="text-xs font-medium text-emerald-700">Credit ₹{fmtShort(totalCredit)}</span>
+        </div>
+        <div className="flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-1.5">
+          <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+          <span className="text-xs font-medium text-red-600">Debit ₹{fmtShort(totalDebit)}</span>
+        </div>
+        <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 ${netCash >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+          <span className={`text-xs font-bold ${netCash >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+            Net {netCash >= 0 ? '+' : ''}₹{fmtShort(netCash)}
+          </span>
+        </div>
+      </div>
+
+      {dailyData.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-6">No entries for selected range</p>
+      ) : (
+        <div className="px-4 pb-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={dailyData} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 9, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => `₹${fmtShort(v)}`}
+                tick={{ fontSize: 9, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                width={60}
+              />
+              <Tooltip
+                formatter={(v: number, name: string) => [
+                  `₹${fmt(v)}`,
+                  name === 'credit' ? 'Credit' : name === 'debit' ? 'Debit' : 'Net',
+                ]}
+                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              />
+              <Legend
+                formatter={(v) => (v === 'credit' ? 'Credit' : v === 'debit' ? 'Debit' : 'Net')}
+                wrapperStyle={{ fontSize: 11 }}
+              />
+              <Bar dataKey="credit" fill="#10b981" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="debit" fill="#ef4444" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Summary Tabs (credit/debit/net by week or month) ─────────────────────
+
+function SummaryTabs({ entries, fmt }: {
+  entries: CashEntry[]
+  fmt: (n: number) => string
+}) {
+  const [tab, setTab] = useState<'monthly' | 'weekly'>('monthly')
+
+  const buildRows = (
+    getKey: (e: CashEntry) => string,
+    getLabel: (e: CashEntry) => string,
+  ): (SummaryRow & { key: string })[] => {
+    const map = new Map<string, { label: string; credit: number; debit: number }>()
+    entries.forEach((e) => {
+      const k = getKey(e)
+      const prev = map.get(k) ?? { label: getLabel(e), credit: 0, debit: 0 }
+      if (e.type === 'debit') {
+        map.set(k, { ...prev, debit: prev.debit + e.amount })
+      } else {
+        map.set(k, { ...prev, credit: prev.credit + e.amount })
+      }
+    })
+    return Array.from(map.entries())
+      .map(([key, v]) => ({ key, label: v.label, credit: v.credit, debit: v.debit, net: v.credit - v.debit }))
+      .sort((a, b) => b.key.localeCompare(a.key))
+  }
+
+  const rows =
+    tab === 'monthly'
+      ? buildRows((e) => e.date.slice(0, 7), (e) => getMonthLabel(e.date))
+      : buildRows((e) => getISOWeek(e.date), (e) => getISOWeek(e.date))
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="border-b border-slate-100 flex">
         {(['monthly', 'weekly'] as const).map((t) => (
           <button
@@ -89,99 +232,60 @@ function SummaryTabs({
       {rows.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-6">No data</p>
       ) : (
-        <>
-          {/* Bar chart */}
-          <div className="px-4 pt-4">
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={rows} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => `₹${fmtShort(v)}`}
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={64}
-                />
-                <Tooltip
-                  formatter={(v: number) => [`₹${fmt(v)}`, 'Total']}
-                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                />
-                <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                  {rows.map((_, i) => (
-                    <Cell key={i} fill={i === 0 ? '#059669' : '#6ee7b7'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Summary table */}
-          <div className="px-4 pb-4 pt-2">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-gray-400 uppercase tracking-wide">
-                  <th className="text-left py-1 font-medium">
-                    {tab === 'monthly' ? 'Month' : 'Week'}
-                  </th>
-                  <th className="text-right py-1 font-medium">Total</th>
-                  <th className="w-1/3 py-1" />
+        <div className="px-4 py-4">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-400 uppercase tracking-wide">
+                <th className="text-left py-1 font-medium">{tab === 'monthly' ? 'Month' : 'Week'}</th>
+                <th className="text-right py-1 font-medium text-emerald-600">Credit</th>
+                <th className="text-right py-1 font-medium text-red-500">Debit</th>
+                <th className="text-right py-1 font-medium text-blue-600">Net</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {rows.map((r) => (
+                <tr key={r.label}>
+                  <td className="py-2 pr-2 font-medium text-gray-700">{r.label}</td>
+                  <td className="py-2 text-right font-semibold text-emerald-600">₹{fmt(r.credit)}</td>
+                  <td className="py-2 text-right font-semibold text-red-500">₹{fmt(r.debit)}</td>
+                  <td className={`py-2 text-right font-bold ${r.net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                    {r.net >= 0 ? '+' : ''}₹{fmt(r.net)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((r, i) => (
-                  <tr key={r.label} className="group">
-                    <td className="py-2 pr-3 font-medium text-gray-700">{r.label}</td>
-                    <td className="py-2 text-right font-bold text-emerald-600 whitespace-nowrap">
-                      ₹{fmt(r.amount)}
-                    </td>
-                    <td className="py-2 pl-3">
-                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${i === 0 ? 'bg-emerald-500' : 'bg-emerald-300'}`}
-                          style={{ width: `${(r.amount / max) * 100}%` }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
 }
 
+// ── Main CashView ─────────────────────────────────────────────────────────
+
 export default function CashView() {
   const [entries, setEntries] = useState<CashEntry[]>([])
-  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(today)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
+  const [entryType, setEntryType] = useState<'credit' | 'debit'>('credit')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
 
-  // Edit state
   const [editId, setEditId] = useState<number | null>(null)
   const [editDate, setEditDate] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editNote, setEditNote] = useState('')
+  const [editType, setEditType] = useState<'credit' | 'debit'>('credit')
   const [editSaving, setEditSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const reload = () =>
     getCashEntries()
-      .then((r) => { setEntries(r.entries); setTotal(r.total) })
+      .then((r) => setEntries(r.entries))
       .catch(() => {})
 
   useEffect(() => {
@@ -195,12 +299,12 @@ export default function CashView() {
     setFormError(null)
     setSaving(true)
     try {
-      await addCashEntry({ date, amount: amt, note: note.trim() })
+      await addCashEntry({ date, amount: amt, note: note.trim(), type: entryType })
       await reload()
       setAmount('')
       setNote('')
       setPage(0)
-      setSuccess(`Saved ₹${fmt(amt)} for ${shortDate(date)}`)
+      setSuccess(`Saved ₹${fmt(amt)} (${entryType}) for ${shortDate(date)}`)
       setTimeout(() => setSuccess(null), 3500)
     } catch {
       setFormError('Failed to save. Please try again.')
@@ -215,6 +319,7 @@ export default function CashView() {
     setEditDate(e.date)
     setEditAmount(String(e.amount))
     setEditNote(e.note)
+    setEditType(e.type ?? 'credit')
   }
 
   const cancelEdit = () => setEditId(null)
@@ -225,7 +330,7 @@ export default function CashView() {
     if (!editDate || isNaN(amt) || amt <= 0) return
     setEditSaving(true)
     try {
-      await updateCashEntry(editId, { date: editDate, amount: amt, note: editNote.trim() })
+      await updateCashEntry(editId, { date: editDate, amount: amt, note: editNote.trim(), type: editType })
       await reload()
       setEditId(null)
     } catch {
@@ -247,37 +352,9 @@ export default function CashView() {
     }
   }
 
-  // Chart: entries sorted asc for trend line
-  const chartData = [...entries]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => ({ date: shortDate(e.date), amount: e.amount }))
+  const totalCredit = entries.filter((e) => e.type !== 'debit').reduce((s, e) => s + e.amount, 0)
+  const totalDebit = entries.filter((e) => e.type === 'debit').reduce((s, e) => s + e.amount, 0)
 
-  // Weekly totals
-  const weeklyTotals = (() => {
-    const map = new Map<string, number>()
-    entries.forEach((e) => {
-      const k = getISOWeek(e.date)
-      map.set(k, (map.get(k) ?? 0) + e.amount)
-    })
-    return Array.from(map.entries())
-      .map(([label, amount]) => ({ label, amount }))
-      .sort((a, b) => b.label.localeCompare(a.label))
-  })()
-
-  // Monthly totals
-  const monthlyTotals = (() => {
-    const map = new Map<string, { label: string; amount: number }>()
-    entries.forEach((e) => {
-      const key = e.date.slice(0, 7)
-      const prev = map.get(key)
-      map.set(key, { label: getMonthLabel(e.date), amount: (prev?.amount ?? 0) + e.amount })
-    })
-    return Array.from(map.entries())
-      .map(([key, v]) => ({ key, ...v }))
-      .sort((a, b) => b.key.localeCompare(a.key))
-  })()
-
-  // Table: entries sorted desc (newest first)
   const sortedEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date))
   const totalPages = Math.ceil(sortedEntries.length / ITEMS_PER_PAGE)
   const pageEntries = sortedEntries.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE)
@@ -291,12 +368,17 @@ export default function CashView() {
         </div>
         <div>
           <p className="font-semibold text-gray-900 text-sm">Daily Cash</p>
-          <p className="text-xs text-gray-500">Track cash in/out by date</p>
+          <p className="text-xs text-gray-500">Track credit &amp; debit by date</p>
         </div>
         {!loading && (
-          <span className="ml-auto text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-            ₹{fmtShort(total)} total
-          </span>
+          <div className="ml-auto flex flex-col items-end gap-0.5">
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              +₹{fmtShort(totalCredit)}
+            </span>
+            <span className="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+              −₹{fmtShort(totalDebit)}
+            </span>
+          </div>
         )}
       </div>
 
@@ -307,18 +389,40 @@ export default function CashView() {
           <h2 className="text-sm font-semibold text-white">Add Cash Entry</h2>
         </div>
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {/* Credit / Debit toggle */}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+            <button
+              onClick={() => setEntryType('credit')}
+              className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                entryType === 'credit'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white text-gray-500 hover:bg-slate-50'
+              }`}
+            >
+              Credit (In)
+            </button>
+            <button
+              onClick={() => setEntryType('debit')}
+              className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                entryType === 'debit'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-white text-gray-500 hover:bg-slate-50'
+              }`}
+            >
+              Debit (Out)
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-              <div className="overflow-hidden">
-                <input
-                  type="date"
-                  value={date}
-                  max={today()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
+              <input
+                type="date"
+                value={date}
+                max={today()}
+                onChange={(e) => setDate(e.target.value)}
+                className={inputCls}
+              />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹)</label>
@@ -345,86 +449,34 @@ export default function CashView() {
             />
           </div>
 
-          {formError && (
-            <p className="text-xs text-red-600 font-medium">{formError}</p>
-          )}
-          {success && (
-            <p className="text-xs text-emerald-600 font-medium">{success}</p>
-          )}
+          {formError && <p className="text-xs text-red-600 font-medium">{formError}</p>}
+          {success && <p className="text-xs text-emerald-600 font-medium">{success}</p>}
 
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors active:scale-95"
+            className={`w-full disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors active:scale-95 ${
+              entryType === 'credit' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'
+            }`}
           >
-            {saving ? 'Saving…' : 'Save Entry'}
+            {saving ? 'Saving…' : `Save ${entryType === 'credit' ? 'Credit' : 'Debit'}`}
           </button>
         </div>
       </div>
 
-      {/* Chart */}
-      {!loading && chartData.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
-            Cash Over Time
-          </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="cashGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => `₹${fmtShort(v)}`}
-                tick={{ fontSize: 10, fill: '#94a3b8' }}
-                axisLine={false}
-                tickLine={false}
-                width={60}
-              />
-              <Tooltip
-                formatter={(v: number) => [`₹${fmt(v)}`, 'Amount']}
-                contentStyle={{ fontSize: 12, borderRadius: 8 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="amount"
-                stroke="#10b981"
-                strokeWidth={2}
-                fill="url(#cashGrad)"
-                dot={{ r: 3, fill: '#10b981' }}
-                activeDot={{ r: 5 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {/* Daily Cash Flow chart */}
+      {!loading && entries.length > 0 && <DailyCashFlow entries={entries} />}
 
       {/* Weekly / Monthly summary */}
       {!loading && entries.length > 0 && (
-        <SummaryTabs
-          weeklyTotals={weeklyTotals}
-          monthlyTotals={monthlyTotals}
-          fmt={fmt}
-          fmtShort={fmtShort}
-        />
+        <SummaryTabs entries={entries} fmt={fmt} />
       )}
 
-      {/* Table */}
+      {/* Entries table */}
       {!loading && sortedEntries.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-              Entries
-            </p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Entries</p>
             <span className="text-xs text-gray-400">{sortedEntries.length} total</span>
           </div>
           <div className="overflow-x-auto">
@@ -432,6 +484,7 @@ export default function CashView() {
               <thead>
                 <tr className="bg-slate-50 text-xs text-gray-500 uppercase tracking-wide">
                   <th className="text-left px-4 py-2 font-medium">Date</th>
+                  <th className="text-left px-4 py-2 font-medium">Type</th>
                   <th className="text-left px-4 py-2 font-medium">Note</th>
                   <th className="text-right px-4 py-2 font-medium">Amount</th>
                   <th className="px-4 py-2" />
@@ -449,6 +502,16 @@ export default function CashView() {
                           onChange={(ev) => setEditDate(ev.target.value)}
                           className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 w-32"
                         />
+                      </td>
+                      <td className="px-2 py-2">
+                        <select
+                          value={editType}
+                          onChange={(ev) => setEditType(ev.target.value as 'credit' | 'debit')}
+                          className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        >
+                          <option value="credit">Credit</option>
+                          <option value="debit">Debit</option>
+                        </select>
                       </td>
                       <td className="px-2 py-2">
                         <input
@@ -472,20 +535,12 @@ export default function CashView() {
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1 justify-end">
-                          <button
-                            onClick={commitEdit}
-                            disabled={editSaving}
-                            className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors"
-                            title="Save"
-                          >
+                          <button onClick={commitEdit} disabled={editSaving}
+                            className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors" title="Save">
                             <Check className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={cancelEdit}
-                            disabled={editSaving}
-                            className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-200 text-gray-600 hover:bg-slate-300 disabled:opacity-40 transition-colors"
-                            title="Cancel"
-                          >
+                          <button onClick={cancelEdit} disabled={editSaving}
+                            className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-200 text-gray-600 hover:bg-slate-300 disabled:opacity-40 transition-colors" title="Cancel">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -494,26 +549,28 @@ export default function CashView() {
                   ) : (
                     <tr key={`${e.date}-${i}`} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{shortDate(e.date)}</td>
-                      <td className="px-4 py-2.5 text-gray-500 truncate max-w-[140px]">
+                      <td className="px-4 py-2.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          e.type === 'debit' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          {e.type === 'debit' ? 'Debit' : 'Credit'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500 truncate max-w-[120px]">
                         {e.note || <span className="text-gray-300 italic">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-bold text-emerald-600">₹{fmt(e.amount)}</td>
+                      <td className={`px-4 py-2.5 text-right font-bold ${e.type === 'debit' ? 'text-red-500' : 'text-emerald-600'}`}>
+                        {e.type === 'debit' ? '−' : '+'}₹{fmt(e.amount)}
+                      </td>
                       <td className="px-2 py-2">
                         {e.id && (
                           <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => startEdit(e)}
-                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                              title="Edit"
-                            >
+                            <button onClick={() => startEdit(e)}
+                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Edit">
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              onClick={() => handleDelete(e.id!)}
-                              disabled={deletingId === e.id}
-                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors"
-                              title="Delete"
-                            >
+                            <button onClick={() => handleDelete(e.id!)} disabled={deletingId === e.id}
+                              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors" title="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -526,25 +583,16 @@ export default function CashView() {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="flex items-center gap-1 text-xs font-medium text-gray-600 disabled:opacity-30 hover:text-indigo-600 transition-colors"
-              >
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
+                className="flex items-center gap-1 text-xs font-medium text-gray-600 disabled:opacity-30 hover:text-indigo-600 transition-colors">
                 <ChevronLeft className="w-4 h-4" />
                 Prev
               </button>
-              <span className="text-xs text-gray-400">
-                Page {page + 1} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="flex items-center gap-1 text-xs font-medium text-gray-600 disabled:opacity-30 hover:text-indigo-600 transition-colors"
-              >
+              <span className="text-xs text-gray-400">Page {page + 1} of {totalPages}</span>
+              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                className="flex items-center gap-1 text-xs font-medium text-gray-600 disabled:opacity-30 hover:text-indigo-600 transition-colors">
                 Next
                 <ChevronRight className="w-4 h-4" />
               </button>

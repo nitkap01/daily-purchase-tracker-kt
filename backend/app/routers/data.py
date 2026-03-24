@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import os
@@ -5,6 +6,7 @@ from datetime import datetime
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..cache import get_cache
@@ -94,7 +96,11 @@ async def get_items_by_date(date: str):
     if day_df.empty:
         return {"date": date, "items": [], "total": 0.0}
 
-    items = day_df[["item", "quantity", "price", "amount"]].to_dict(orient="records")
+    # Build item list, including optional columns
+    optional_cols = ["bill_type", "seller", "selling_price"]
+    base_cols = ["item", "quantity", "price", "amount"]
+    cols = base_cols + [c for c in optional_cols if c in day_df.columns]
+    items = day_df[cols].to_dict(orient="records")
 
     # Use sheet's Total column if present and non-zero, else sum amounts
     if "total" in day_df.columns and float(day_df["total"].iloc[0]) > 0:
@@ -138,8 +144,12 @@ async def get_item_history(
     if item_df.empty:
         raise HTTPException(status_code=404, detail=f"Item '{item}' not found.")
 
+    optional_cols = ["bill_type", "seller", "selling_price"]
+    base_cols = ["date_str", "quantity", "price", "amount"]
+    hist_cols = base_cols + [c for c in optional_cols if c in item_df.columns]
+
     history = (
-        item_df[["date_str", "quantity", "price", "amount"]]
+        item_df[hist_cols]
         .rename(columns={"date_str": "date"})
         .sort_values("date", ascending=False)
         .to_dict(orient="records")
@@ -255,6 +265,32 @@ async def get_inventory():
         .reset_index()
     )
     grp = grp.sort_values("purchase_count", ascending=False)
+
+    # Latest purchase price per item (most recent row by date)
+    if "date" in df.columns:
+        latest = (
+            df.sort_values("date")
+            .groupby("item", as_index=False)
+            .last()[["item", "price"]]
+            .rename(columns={"price": "latest_price"})
+        )
+        grp = grp.merge(latest, on="item", how="left")
+    else:
+        grp["latest_price"] = grp["avg_price"]
+
+    # Latest known selling price per item (most recent non-zero value)
+    if "selling_price" in df.columns:
+        sp_df = df[df["selling_price"].fillna(0) > 0]
+        if len(sp_df) > 0:
+            sort_col = "date" if "date" in sp_df.columns else None
+            if sort_col:
+                sp_df = sp_df.sort_values(sort_col)
+            sp = sp_df.groupby("item", as_index=False).last()[["item", "selling_price"]]
+            grp = grp.merge(sp, on="item", how="left")
+        grp["selling_price"] = grp["selling_price"].fillna(0.0)
+    else:
+        grp["selling_price"] = 0.0
+
     return {"items": grp.to_dict(orient="records")}
 
 
@@ -311,12 +347,14 @@ class CashEntryRequest(BaseModel):
     date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     amount: float = Field(..., gt=0)
     note: str = Field(default="", max_length=300)
+    type: str = Field(default="credit", pattern=r"^(credit|debit)$")
 
 
 class UpdateCashEntryRequest(BaseModel):
     date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     amount: float = Field(..., gt=0)
     note: str = Field(default="", max_length=300)
+    type: str = Field(default="credit", pattern=r"^(credit|debit)$")
 
 
 @router.post("/cash")
@@ -328,6 +366,7 @@ async def add_cash(payload: CashEntryRequest):
         raise HTTPException(status_code=400, detail="Invalid date format.")
 
     note = payload.note.strip()
+    entry_type = payload.type
 
     # Persist to PostgreSQL
     pool = await get_pool()
@@ -335,10 +374,11 @@ async def add_cash(payload: CashEntryRequest):
         try:
             async with pool.acquire() as conn:
                 await conn.execute(
-                    "INSERT INTO cash_entries (date, amount, note) VALUES ($1, $2, $3)",
+                    "INSERT INTO cash_entries (date, amount, note, type) VALUES ($1, $2, $3, $4)",
                     entry_date,
                     payload.amount,
                     note,
+                    entry_type,
                 )
         except Exception as exc:
             logger.error("DB cash insert failed: %s", exc)
@@ -356,10 +396,16 @@ async def get_cash():
         try:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT id, date, amount, note FROM cash_entries ORDER BY date DESC"
+                    "SELECT id, date, amount, note, COALESCE(type, 'credit') as type FROM cash_entries ORDER BY date DESC"
                 )
             entries = [
-                {"id": r["id"], "date": str(r["date"]), "amount": float(r["amount"]), "note": r["note"]}
+                {
+                    "id": r["id"],
+                    "date": str(r["date"]),
+                    "amount": float(r["amount"]),
+                    "note": r["note"],
+                    "type": r["type"],
+                }
                 for r in rows
             ]
         except Exception as exc:
@@ -386,10 +432,11 @@ async def update_cash(entry_id: int, payload: UpdateCashEntryRequest):
 
     async with pool.acquire() as conn:
         result = await conn.execute(
-            "UPDATE cash_entries SET date=$1, amount=$2, note=$3 WHERE id=$4",
+            "UPDATE cash_entries SET date=$1, amount=$2, note=$3, type=$4 WHERE id=$5",
             entry_date,
             payload.amount,
             payload.note.strip(),
+            payload.type,
             entry_id,
         )
     if result == "UPDATE 0":
@@ -412,3 +459,100 @@ async def delete_cash(entry_id: int):
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Entry not found.")
     return {"status": "deleted"}
+
+
+# ---------------------------------------------------------------------------
+# Seller / buyer analytics
+# ---------------------------------------------------------------------------
+
+@router.get("/sellers")
+async def get_sellers():
+    """Return all unique, non-empty seller names sorted alphabetically."""
+    df = _require_data()
+    if "seller" not in df.columns:
+        return {"sellers": []}
+    sellers = sorted(
+        s for s in df["seller"].dropna().unique().tolist() if str(s).strip()
+    )
+    return {"sellers": sellers}
+
+
+@router.get("/seller-analytics")
+async def get_seller_analytics(
+    seller: str = Query(..., min_length=1, max_length=200),
+):
+    """Return full purchase breakdown for a given seller."""
+    df = _require_data()
+    if "seller" not in df.columns:
+        raise HTTPException(status_code=404, detail="No seller data available.")
+
+    sel_df = df[df["seller"].str.strip().str.lower() == seller.strip().lower()]
+    if sel_df.empty:
+        raise HTTPException(status_code=404, detail=f"Seller '{seller}' not found.")
+
+    # Item-level summary
+    item_grp = (
+        sel_df.groupby("item")
+        .agg(
+            qty=("quantity", "sum"),
+            spent=("amount", "sum"),
+            count=("quantity", "count"),
+        )
+        .reset_index()
+        .sort_values("spent", ascending=False)
+    )
+    item_summary = item_grp.rename(columns={"item": "item"}).to_dict(orient="records")
+
+    # Date-grouped purchase history
+    date_col = "date_str" if "date_str" in sel_df.columns else "date"
+    optional = ["bill_type", "seller", "selling_price"]
+    base = ["item", "quantity", "price", "amount"]
+    row_cols = base + [c for c in optional if c in sel_df.columns]
+
+    history = []
+    for date_val, group in sel_df.groupby(date_col):
+        rows = group[row_cols].to_dict(orient="records")
+        history.append({
+            "date": str(date_val),
+            "items": rows,
+            "day_total": float(group["amount"].sum()),
+        })
+    history.sort(key=lambda x: x["date"], reverse=True)
+
+    return {
+        "seller": seller,
+        "total_spent": float(sel_df["amount"].sum()),
+        "total_purchases": int(len(sel_df)),
+        "unique_items": int(sel_df["item"].nunique()),
+        "item_summary": item_summary,
+        "purchase_history": history,
+    }
+
+
+# ---------------------------------------------------------------------------
+# CSV Export
+# ---------------------------------------------------------------------------
+
+@router.get("/export/csv")
+async def export_csv():
+    """Export the full in-memory purchases cache as a CSV download."""
+    df = _require_data()
+
+    # Select and order columns that are present
+    preferred_cols = ["date_str", "item", "quantity", "price", "amount",
+                      "bill_type", "seller", "selling_price"]
+    export_cols = [c for c in preferred_cols if c in df.columns]
+    export_df = df[export_cols].copy()
+    export_df = export_df.rename(columns={"date_str": "date"})
+    export_df = export_df.sort_values("date", ascending=False)
+
+    buffer = io.StringIO()
+    export_df.to_csv(buffer, index=False)
+    buffer.seek(0)
+
+    filename = f"kapoor_traders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

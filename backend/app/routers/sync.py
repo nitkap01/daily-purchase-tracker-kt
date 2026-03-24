@@ -1,9 +1,9 @@
 """
-Sync router — bidirectional sync between Google Sheet and PostgreSQL.
+Sync router — one-way sync from Google Sheet to PostgreSQL.
+Sheet is the source of truth.
 
 POST /api/sync/sheet-to-db      — copy in-memory cache (from sheet) → postgres
-POST /api/sync/db-to-sheet      — copy postgres purchases → google sheet
-POST /api/credentials/upload    — upload service-account JSON (for DB→Sheet)
+POST /api/credentials/upload    — upload service-account JSON (for sheet rename)
 GET  /api/sync/log              — last 20 sync events
 """
 import json
@@ -13,7 +13,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from ..cache import get_cache
-from ..credentials import get_credentials, has_credentials, set_credentials
+from ..credentials import has_credentials, set_credentials
 from ..db import get_pool
 from ..sheets import fetch_sheet_data
 
@@ -122,82 +122,6 @@ async def upload_credentials(file: UploadFile = File(...)):
         "client_email": data["client_email"],
     }
 
-
-# ── DB → Sheet ──────────────────────────────────────────────────────────────
-
-@router.post("/db-to-sheet")
-async def sync_db_to_sheet():
-    """
-    Read purchases from PostgreSQL and overwrite the Google Sheet.
-    Requires GOOGLE_CREDENTIALS_JSON env var (service account JSON string).
-    """
-    creds_json = get_credentials()
-    import os
-    sheet_id = os.getenv("SHEET_ID")
-
-    if not creds_json:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Google credentials not available. "
-                "Upload a service-account JSON via the Status tab, or set GOOGLE_CREDENTIALS_JSON."
-            ),
-        )
-    if not sheet_id:
-        raise HTTPException(status_code=503, detail="SHEET_ID is not configured.")
-
-    pool = await get_pool()
-    if not pool:
-        raise HTTPException(status_code=503, detail="PostgreSQL is not available.")
-
-    try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ]
-        creds_dict = json.loads(creds_json)
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        gc = gspread.authorize(creds)
-        sh = gc.open_by_key(sheet_id)
-        ws = sh.get_worksheet(0)
-    except Exception as exc:
-        await _log_sync("db_to_sheet", 0, "failed", str(exc))
-        raise HTTPException(status_code=502, detail=f"Google Sheets auth failed: {exc}")
-
-    try:
-        async with pool.acquire() as conn:
-            rows_db = await conn.fetch(
-                "SELECT date, item, quantity, price, amount FROM purchases ORDER BY date, id"
-            )
-    except Exception as exc:
-        await _log_sync("db_to_sheet", 0, "failed", str(exc))
-        raise HTTPException(status_code=500, detail=f"Database read failed: {exc}")
-
-    try:
-        header = ["Date", "Item", "Quantity", "Price", "Amount"]
-        data = [header] + [
-            [
-                str(r["date"]),
-                r["item"],
-                float(r["quantity"]),
-                float(r["price"]),
-                float(r["amount"]),
-            ]
-            for r in rows_db
-        ]
-        ws.clear()
-        ws.update(data, "A1")
-    except Exception as exc:
-        await _log_sync("db_to_sheet", 0, "failed", str(exc))
-        raise HTTPException(status_code=502, detail=f"Google Sheets write failed: {exc}")
-
-    rows = len(rows_db)
-    await _log_sync("db_to_sheet", rows, "success")
-    logger.info("Synced %d rows from DB to sheet", rows)
-    return {"status": "success", "rows_synced": rows, "direction": "db_to_sheet"}
 
 
 # ── Sync Log ────────────────────────────────────────────────────────────────

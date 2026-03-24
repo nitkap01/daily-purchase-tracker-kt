@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, ChatMessage, DateData, HealthData, InventoryItem, ItemHistory, RenameItemPayload, SyncLogEntry } from './types'
+import type { AddCashPayload, AddItemPayload, AppStatus, CashEntry, ChatMessage, CreatePaymentPayload, DateData, HealthData, InventoryItem, ItemHistory, Payment, PaymentsData, RenameItemPayload, SellerAnalytics } from './types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -53,14 +53,14 @@ export const deleteCashEntry = (id: number): Promise<{ status: string }> =>
 export const getAppStatus = (): Promise<AppStatus> =>
   api.get('/status').then((r) => r.data)
 
+export const getSellers = (): Promise<{ sellers: string[] }> =>
+  api.get('/sellers').then((r) => r.data)
+
+export const getSellerAnalytics = (seller: string): Promise<SellerAnalytics> =>
+  api.get('/seller-analytics', { params: { seller } }).then((r) => r.data)
+
 export const syncSheetToDb = (): Promise<{ status: string; rows_synced: number }> =>
   api.post('/sync/sheet-to-db').then((r) => r.data)
-
-export const syncDbToSheet = (): Promise<{ status: string; rows_synced: number }> =>
-  api.post('/sync/db-to-sheet').then((r) => r.data)
-
-export const getSyncLog = (): Promise<{ log: SyncLogEntry[] }> =>
-  api.get('/sync/log').then((r) => r.data)
 
 export const uploadCredentials = (
   file: File,
@@ -86,5 +86,22 @@ export const chatQuery = (
 export const getChatModels = (): Promise<{ models: string[]; default: string }> =>
   api.get('/chat/models').then((r) => r.data)
 
+export const exportCsv = (): Promise<Blob> =>
+  api.get('/export/csv', { responseType: 'blob', timeout: 30_000 }).then((r) => r.data)
+
+// ── Payments ────────────────────────────────────────────────────────────────
+
+export const getPayments = (): Promise<PaymentsData> =>
+  api.get('/payments').then((r) => r.data)
+
+export const createPayment = (payload: CreatePaymentPayload): Promise<{ status: string; id: number }> =>
+  api.post('/payments', payload).then((r) => r.data)
+
+export const markPaymentReceived = (id: number): Promise<{ status: string; received_at: string }> =>
+  api.patch(`/payments/${id}/mark-received`).then((r) => r.data)
+
+export const deletePayment = (id: number): Promise<{ status: string }> =>
+  api.delete(`/payments/${id}`).then((r) => r.data)
+
 // re-export ChatMessage so views can import from api if needed
-export type { ChatMessage }
+export type { ChatMessage, Payment }

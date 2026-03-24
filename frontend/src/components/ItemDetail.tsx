@@ -24,6 +24,7 @@ import type { ItemHistory } from '../types'
 interface Props {
   item: string
   onBack: () => void
+  showMargins?: boolean
 }
 
 const fmt = (n: number) =>
@@ -37,7 +38,7 @@ const shortDate = (d: string) => {
   return `${day}/${m}/${y.slice(2)}`
 }
 
-export default function ItemDetail({ item, onBack }: Props) {
+export default function ItemDetail({ item, onBack, showMargins = true }: Props) {
   const [data, setData] = useState<ItemHistory | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -181,20 +182,59 @@ export default function ItemDetail({ item, onBack }: Props) {
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2 px-0.5">Purchase history</p>
             <div className="space-y-2">
-              {data.history.map((entry, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm flex items-center justify-between"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{entry.date}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {entry.quantity} × ₹{fmt(entry.price)}
-                    </p>
+              {data.history.map((entry, i) => {
+                const margin =
+                  entry.selling_price && entry.selling_price > 0 && entry.price > 0
+                    ? entry.selling_price - entry.price
+                    : null
+                const marginPct =
+                  margin !== null && entry.price > 0
+                    ? (margin / entry.price) * 100
+                    : null
+                const isWithBill = entry.bill_type?.toUpperCase() === 'W'
+                const isWithoutBill = entry.bill_type?.toUpperCase() === 'WB'
+
+                return (
+                  <div
+                    key={i}
+                    className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                          <p className="text-sm font-medium text-gray-800">{entry.date}</p>
+                          {isWithBill && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">With Bill</span>
+                          )}
+                          {isWithoutBill && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">Without Bill</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {entry.quantity} × ₹{fmt(entry.price)} (buy)
+                        </p>
+                        {entry.selling_price && entry.selling_price > 0 && (
+                          <p className="text-xs text-indigo-500 mt-0.5">
+                            Sell: {showMargins ? `₹${fmt(entry.selling_price)}` : <span className="tracking-widest font-mono text-gray-400">••••</span>}
+                            {marginPct !== null && margin !== null && (
+                              <span className={`ml-1.5 font-semibold ${margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {showMargins
+                                  ? `margin ₹${fmt(margin)} (${marginPct >= 0 ? '+' : ''}${marginPct.toFixed(1)}%)`
+                                  : <span className="tracking-widest font-mono text-gray-400">••••</span>
+                                }
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        {entry.seller && (
+                          <p className="text-xs text-gray-400 mt-0.5">Seller: {entry.seller}</p>
+                        )}
+                      </div>
+                      <p className="text-sm font-bold text-indigo-600 shrink-0">₹{fmt(entry.amount)}</p>
+                    </div>
                   </div>
-                  <p className="text-sm font-bold text-indigo-600">₹{fmt(entry.amount)}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </>
