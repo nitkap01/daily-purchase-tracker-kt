@@ -36,6 +36,28 @@ Table: cash_entries
   - date DATE
   - amount NUMERIC             — cash amount (₹ INR)
   - note TEXT
+  - type VARCHAR               — 'credit' (cash in) or 'debit' (cash out)
+  - created_at TIMESTAMPTZ
+
+Table: payments
+  - id SERIAL PRIMARY KEY
+  - party_name VARCHAR         — buyer/party name
+  - amount NUMERIC             — payment amount (₹ INR)
+  - purchase_date DATE         — date of the original purchase
+  - notes TEXT
+  - status VARCHAR             — 'pending' or 'received'
+  - received_at TIMESTAMPTZ   — when payment was marked received (NULL if pending)
+  - created_at TIMESTAMPTZ
+
+Table: cheques
+  - id SERIAL PRIMARY KEY
+  - party_name VARCHAR         — party who issued the cheque
+  - amount NUMERIC             — cheque amount (₹ INR)
+  - cheque_number VARCHAR      — cheque number
+  - cheque_date DATE           — date on the cheque
+  - status VARCHAR             — 'pending', 'cleared', or 'rejected'
+  - cleared_at TIMESTAMPTZ    — when cheque was cleared by bank
+  - rejected_at TIMESTAMPTZ   — when cheque was rejected by bank
   - created_at TIMESTAMPTZ
 
 Currency is Indian Rupees (₹). Dates stored as DATE (YYYY-MM-DD).
@@ -51,6 +73,9 @@ Rules:
 - For "most bought" use COUNT(*) or SUM(quantity).
 - For "most expensive" or "costly" use AVG(price) or MAX(price).
 - For "total spending" use SUM(amount).
+- For pending payments use: WHERE status = 'pending' on the payments table.
+- For cleared cheques use: WHERE status = 'cleared' on the cheques table.
+- For cash flow (credit vs debit) use the cash_entries table with the type column.
 - ORDER results meaningfully (highest first, most to least).
 - Today's date is CURRENT_DATE.
 """

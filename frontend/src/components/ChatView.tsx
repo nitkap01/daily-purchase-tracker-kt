@@ -9,6 +9,10 @@ const CHIPS = [
   'Total spending this month',
   'Last 7 days spending',
   'Items bought most frequently',
+  'Pending payments',
+  'Pending cheques',
+  'Total cash credit this month',
+  'Total cash debit this month',
 ]
 
 function UserBubble({ text }: { text: string }) {

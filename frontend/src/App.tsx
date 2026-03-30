@@ -17,12 +17,12 @@ import { APP_VERSION } from './version'
 type Tab = 'date' | 'search' | 'inventory' | 'cash' | 'order' | 'analytics' | 'payments' | 'cheques' | 'status' | 'chat'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'analytics', label: 'Buyers', icon: <BarChart2 className="w-4 h-4" /> },
   { id: 'date', label: 'By Date', icon: <Calendar className="w-4 h-4" /> },
   { id: 'search', label: 'Search', icon: <Search className="w-4 h-4" /> },
   { id: 'inventory', label: 'Inventory', icon: <Layers className="w-4 h-4" /> },
   { id: 'cash', label: 'Cash', icon: <PiggyBank className="w-4 h-4" /> },
   { id: 'order', label: 'Orders', icon: <ClipboardList className="w-4 h-4" /> },
-  { id: 'analytics', label: 'Buyers', icon: <BarChart2 className="w-4 h-4" /> },
   { id: 'payments', label: 'Payments', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'cheques', label: 'Cheques', icon: <ClipboardList className="w-4 h-4" /> },
   { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
@@ -30,7 +30,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('date')
+  const [activeTab, setActiveTab] = useState<Tab>('analytics')
   const [health, setHealth] = useState<HealthData | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
@@ -117,7 +117,7 @@ export default function App() {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           {/* Brand — click to go home */}
           <button
-            onClick={() => setActiveTab('date')}
+            onClick={() => setActiveTab('analytics')}
             className="flex items-center gap-2.5 min-w-0 text-left active:opacity-70 transition-opacity"
           >
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">

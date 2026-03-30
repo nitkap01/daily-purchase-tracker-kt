@@ -15,9 +15,25 @@ import type { CashEntry } from '../types'
 
 const today = (): string => new Date().toISOString().split('T')[0]
 
-const currentMonthStart = (): string => {
+// Start day of the cash cycle — configurable via VITE_CASH_START_DAY (default 23)
+const CASH_START_DAY = (() => {
+  const raw = import.meta.env.VITE_CASH_START_DAY ?? ''
+  const n = parseInt(raw, 10)
+  return !isNaN(n) && n >= 1 && n <= 28 ? n : 23
+})()
+
+const currentCycleStart = (): string => {
   const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  const day = d.getDate()
+  const year = d.getFullYear()
+  const month = d.getMonth() + 1
+  // If today is before the start day, use last month's cycle start
+  if (day < CASH_START_DAY) {
+    const prevMonth = month === 1 ? 12 : month - 1
+    const prevYear = month === 1 ? year - 1 : year
+    return `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(CASH_START_DAY).padStart(2, '0')}`
+  }
+  return `${year}-${String(month).padStart(2, '0')}-${String(CASH_START_DAY).padStart(2, '0')}`
 }
 
 const shortDate = (d: string) => {
@@ -58,7 +74,7 @@ type SummaryRow = { label: string; credit: number; debit: number; net: number }
 // ── Daily Cash Flow Chart ────────────────────────────────────────────────
 
 function DailyCashFlow({ entries }: { entries: CashEntry[] }) {
-  const [fromDate, setFromDate] = useState(currentMonthStart)
+  const [fromDate, setFromDate] = useState(currentCycleStart)
   const [toDate, setToDate] = useState(today)
 
   const dailyData = (() => {
@@ -115,10 +131,10 @@ function DailyCashFlow({ entries }: { entries: CashEntry[] }) {
           />
         </div>
         <button
-          onClick={() => { setFromDate(currentMonthStart()); setToDate(today()) }}
+          onClick={() => { setFromDate(currentCycleStart()); setToDate(today()) }}
           className="text-xs font-medium px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
         >
-          This Month
+          This Cycle
         </button>
       </div>
 
@@ -282,6 +298,7 @@ export default function CashView() {
   const [editType, setEditType] = useState<'credit' | 'debit'>('credit')
   const [editSaving, setEditSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [typeFilter, setTypeFilter] = useState<'all' | 'credit' | 'debit'>('all')
 
   const reload = () =>
     getCashEntries()
@@ -355,7 +372,9 @@ export default function CashView() {
   const totalCredit = entries.filter((e) => e.type !== 'debit').reduce((s, e) => s + e.amount, 0)
   const totalDebit = entries.filter((e) => e.type === 'debit').reduce((s, e) => s + e.amount, 0)
 
-  const sortedEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date))
+  const sortedEntries = [...entries]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .filter((e) => typeFilter === 'all' || e.type === typeFilter)
   const totalPages = Math.ceil(sortedEntries.length / ITEMS_PER_PAGE)
   const pageEntries = sortedEntries.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE)
 
@@ -475,9 +494,24 @@ export default function CashView() {
       {/* Entries table */}
       {!loading && sortedEntries.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Entries</p>
-            <span className="text-xs text-gray-400">{sortedEntries.length} total</span>
+            <div className="flex items-center gap-1">
+              {(['all', 'credit', 'debit'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => { setTypeFilter(f); setPage(0) }}
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                    typeFilter === f
+                      ? f === 'credit' ? 'bg-emerald-600 text-white' : f === 'debit' ? 'bg-red-500 text-white' : 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-gray-500 hover:bg-slate-200'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : f === 'credit' ? 'Credit' : 'Debit'}
+                </button>
+              ))}
+              <span className="text-xs text-gray-400 ml-1">{sortedEntries.length}</span>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

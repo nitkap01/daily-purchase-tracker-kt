@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Layers, Pencil, X } from 'lucide-react'
+import { Check, Layers, Pencil, Search, X } from 'lucide-react'
 import { getInventory, renameItem } from '../api'
 import type { InventoryItem } from '../types'
 
@@ -97,6 +97,7 @@ export default function InventoryView() {
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     getInventory()
@@ -111,6 +112,10 @@ export default function InventoryView() {
     )
   }
 
+  const filtered = search.trim()
+    ? items.filter((it) => it.item.toLowerCase().includes(search.trim().toLowerCase()))
+    : items
+
   return (
     <div className="space-y-4">
       {/* Header card */}
@@ -124,10 +129,35 @@ export default function InventoryView() {
         </div>
         {!loading && !error && (
           <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-            {items.length} items
+            {filtered.length}{search ? ` / ${items.length}` : ''} items
           </span>
         )}
       </div>
+
+      {/* Search */}
+      {!loading && !error && items.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search items…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="bg-white rounded-xl border border-slate-200 h-80 flex items-center justify-center animate-pulse">
@@ -163,11 +193,12 @@ export default function InventoryView() {
                     <th className="text-left px-4 py-2 font-medium">Item</th>
                     <th className="text-right px-4 py-2 font-medium">Qty</th>
                     <th className="text-right px-4 py-2 font-medium">Avg Price</th>
+                    <th className="text-right px-4 py-2 font-medium">Last Price</th>
                     <th className="text-right px-4 py-2 font-medium">Total Spent</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {[...items]
+                  {[...filtered]
                     .sort((a, b) => b.total_spent - a.total_spent)
                     .map((item, i) => (
                       <tr key={item.item} className="hover:bg-slate-50 transition-colors">
@@ -177,9 +208,17 @@ export default function InventoryView() {
                         </td>
                         <td className="px-4 py-2.5 text-right text-gray-600">{fmt(item.total_quantity)}</td>
                         <td className="px-4 py-2.5 text-right text-gray-600">₹{fmt(item.avg_price)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">
+                          {item.latest_price != null ? `₹${fmt(item.latest_price)}` : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="px-4 py-2.5 text-right font-bold text-indigo-600">₹{fmt(item.total_spent)}</td>
                       </tr>
                     ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400 text-sm">No items match "{search}"</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
