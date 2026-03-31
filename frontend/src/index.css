@@ -93,3 +93,42 @@ html.dark .border-red-200 { border-color: rgba(239,68,68,0.3); }
 html.dark .hover\:bg-slate-50:hover  { background-color: #334155; }
 html.dark .hover\:bg-slate-100:hover { background-color: #334155; }
 html.dark .hover\:bg-indigo-100:hover { background-color: rgba(79,70,229,0.25); }
+
+/* ─────────────── Mobile / iPhone safe-area & touch fixes ─────────────────── */
+
+/* Safe area padding for iPhone notch & home indicator */
+header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+main {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem);
+}
+
+/* Touch devices: always show action buttons (no hover on mobile) */
+@media (hover: none) and (pointer: coarse) {
+  .group-hover\:opacity-100 {
+    opacity: 1 !important;
+  }
+}
+
+/* Prevent iOS Safari zoom on focus for inputs smaller than 16px */
+@media screen and (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Hide scrollbar on tab bar but keep scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

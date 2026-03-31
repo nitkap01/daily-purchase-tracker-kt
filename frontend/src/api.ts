@@ -120,5 +120,21 @@ export const rejectCheque = (id: number): Promise<{ status: string; rejected_at:
 export const deleteCheque = (id: number): Promise<{ status: string }> =>
   api.delete(`/cheques/${id}`).then((r) => r.data)
 
+// ── Backup / Restore ────────────────────────────────────────────────────────
+
+export const downloadBackup = (): Promise<Blob> =>
+  api.get('/backup', { responseType: 'blob', timeout: 60_000 }).then((r) => r.data)
+
+export const uploadRestore = (
+  file: File,
+): Promise<{ status: string; tables_restored: string[]; total_rows: number }> => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post('/restore', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,
+  }).then((r) => r.data)
+}
+
 // re-export ChatMessage so views can import from api if needed
 export type { ChatMessage, Cheque, Payment }

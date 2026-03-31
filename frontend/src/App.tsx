@@ -136,61 +136,61 @@ export default function App() {
           </button>
 
           {/* Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              {refreshMsg && (
-                <span className="text-xs text-indigo-600 font-medium hidden sm:block max-w-[180px] truncate">
-                  {refreshMsg}
-                </span>
-              )}
-              {/* Eye toggle — show/hide margins */}
-              <button
-                onClick={() => setShowMargins((v) => !v)}
-                title={showMargins ? 'Hide margins & selling prices' : 'Show margins & selling prices'}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors active:scale-95 ${
-                  showMargins
-                    ? 'border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                    : 'border-slate-200 bg-slate-50 text-gray-400 hover:bg-slate-100'
-                }`}
-              >
-                {showMargins ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </button>
-              {/* CSV export */}
-              <button
-                onClick={handleExportCsv}
-                disabled={exporting}
-                title="Download purchases as CSV"
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95 disabled:opacity-50 hidden sm:flex"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setDark((d) => !d)}
-                title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95"
-              >
-                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {refreshMsg && (
+              <span className="text-xs text-indigo-600 font-medium hidden sm:block max-w-[180px] truncate">
+                {refreshMsg}
+              </span>
+            )}
+            {/* Eye toggle — show/hide margins */}
+            <button
+              onClick={() => setShowMargins((v) => !v)}
+              title={showMargins ? 'Hide margins & selling prices' : 'Show margins & selling prices'}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors active:scale-95 ${
+                showMargins
+                  ? 'border-indigo-300 bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                  : 'border-slate-200 bg-slate-50 text-gray-400 hover:bg-slate-100'
+              }`}
+            >
+              {showMargins ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+            {/* CSV export */}
+            <button
+              onClick={handleExportCsv}
+              disabled={exporting}
+              title="Download purchases as CSV"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95 disabled:opacity-50 hidden sm:flex"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setDark((d) => !d)}
+              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-gray-600 transition-colors active:scale-95"
+            >
+              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
               title="Refresh data from Google Sheets"
-              className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium text-sm px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
+              className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium text-sm px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
-            </div>
           </div>
+        </div>
 
         {/* ── Tabs ── */}
-        <div className="max-w-2xl mx-auto px-4 flex border-t border-slate-100 overflow-x-auto">
+        <div className="max-w-2xl mx-auto px-2 sm:px-4 flex border-t border-slate-100 overflow-x-auto hide-scrollbar">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'

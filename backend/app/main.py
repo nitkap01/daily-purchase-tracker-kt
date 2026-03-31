@@ -17,6 +17,7 @@ from .routers.status import router as status_router
 from .routers.chat import router as chat_router
 from .routers.payments import router as payments_router
 from .routers.cheques import router as cheques_router
+from .routers.backup import router as backup_router
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
@@ -56,7 +57,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -67,6 +68,7 @@ app.include_router(status_router)
 app.include_router(chat_router)
 app.include_router(payments_router)
 app.include_router(cheques_router)
+app.include_router(backup_router)
 
 # ── Serve React SPA (present only in the production Docker image) ──────────
 if STATIC_DIR.exists():
