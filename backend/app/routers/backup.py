@@ -8,7 +8,8 @@ import csv
 import io
 import logging
 import zipfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -36,6 +37,47 @@ async def _get_table_columns(conn, table: str) -> list[str]:
         table,
     )
     return [r["column_name"] for r in rows]
+
+
+async def _get_text_columns(conn, table: str) -> list[str]:
+    """Return column names that are text/varchar (NOT NULL safe for COPY)."""
+    rows = await conn.fetch(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = $1 "
+        "AND data_type IN ('text', 'character varying') "
+        "AND is_nullable = 'NO' "
+        "ORDER BY ordinal_position",
+        table,
+    )
+    return [r["column_name"] for r in rows]
+
+
+async def _get_column_types(conn, table: str) -> dict[str, str]:
+    """Return a map of column_name → data_type for a table."""
+    rows = await conn.fetch(
+        "SELECT column_name, data_type FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = $1",
+        table,
+    )
+    return {r["column_name"]: r["data_type"] for r in rows}
+
+
+def _cast_value(val: str, pg_type: str):
+    """Cast a CSV string value to the appropriate Python type for asyncpg."""
+    if pg_type in ("integer", "bigint", "smallint"):
+        return int(val)
+    if pg_type in ("numeric", "decimal", "money"):
+        return Decimal(val)
+    if pg_type in ("real", "double precision"):
+        return float(val)
+    if pg_type == "boolean":
+        return val.lower() in ("true", "t", "1", "yes")
+    if pg_type == "date":
+        return date.fromisoformat(val)
+    if pg_type in ("timestamp with time zone", "timestamp without time zone"):
+        return datetime.fromisoformat(val)
+    # text, varchar, etc. — pass as string
+    return val
 
 
 @router.get("/backup")
@@ -146,26 +188,48 @@ async def restore_database(file: UploadFile = File(...)):
                         detail=f"Invalid columns in {csv_name}: {invalid}",
                     )
 
-                # Clear existing data and insert from CSV
-                await conn.execute(f'DELETE FROM "{table}"')  # noqa: S608
-
+                # Collect remaining rows
                 rows_data = list(reader)
                 if not rows_data:
                     tables_restored.append(table)
                     continue
 
-                # Build parameterized INSERT
+                # Find NOT NULL text column indices — empty CSV fields must
+                # stay as empty strings, not become NULL.
+                not_null_text_cols = set(await _get_text_columns(conn, table))
+
+                # Get column types for proper casting
+                col_types = await _get_column_types(conn, table)
+
+                # Clear existing data
+                await conn.execute(f'DELETE FROM "{table}"')  # noqa: S608
+
+                # Build parameterized INSERT with type casts
                 cols_quoted = ", ".join(f'"{h}"' for h in headers)
-                placeholders = ", ".join(f"${i + 1}" for i in range(len(headers)))
-                insert_sql = f'INSERT INTO "{table}" ({cols_quoted}) VALUES ({placeholders})'  # noqa: S608
+                placeholders = ", ".join(f"${i+1}" for i in range(len(headers)))
+                insert_sql = (
+                    f'INSERT INTO "{table}" ({cols_quoted}) '  # noqa: S608
+                    f"VALUES ({placeholders})"
+                )
 
                 for row in rows_data:
-                    # Convert empty strings to None for nullable fields
-                    values = [None if v == "" else v for v in row]
+                    values = []
+                    for i, val in enumerate(row):
+                        col_name = headers[i]
+                        pg_type = col_types.get(col_name, "text")
+
+                        if val == "" and col_name not in not_null_text_cols:
+                            values.append(None)  # NULL for nullable empty fields
+                        elif val == "":
+                            values.append("")  # empty string for NOT NULL text
+                        else:
+                            values.append(_cast_value(val, pg_type))
                     try:
                         await conn.execute(insert_sql, *values)
                     except Exception as exc:
-                        logger.error("Restore: row insert failed for %s: %s", table, exc)
+                        logger.error(
+                            "Restore: insert failed for %s: %s", table, exc
+                        )
                         raise HTTPException(
                             status_code=400,
                             detail=f"Failed to restore {table}: {exc}",
