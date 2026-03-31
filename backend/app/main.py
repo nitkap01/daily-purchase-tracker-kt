@@ -1,10 +1,12 @@
+import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .cache import get_cache
@@ -75,6 +77,19 @@ if STATIC_DIR.exists():
     assets_dir = STATIC_DIR / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    # Expose selected env vars to the browser at runtime
+    # (VITE_ vars are baked at build-time; this lets Portainer env vars work)
+    @app.get("/env-config.js", include_in_schema=False)
+    async def env_config():
+        cfg = {
+            "VITE_GOOGLE_CLIENT_ID": os.environ.get("VITE_GOOGLE_CLIENT_ID", ""),
+            "VITE_GOOGLE_API_KEY": os.environ.get("VITE_GOOGLE_API_KEY", ""),
+        }
+        return Response(
+            content=f"window.__ENV__={json.dumps(cfg)};",
+            media_type="application/javascript",
+        )
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(_full_path: str = "") -> FileResponse:

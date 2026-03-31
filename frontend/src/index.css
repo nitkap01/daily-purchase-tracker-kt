@@ -122,6 +122,14 @@ main {
   textarea {
     font-size: 16px !important;
   }
+
+  /* iOS date inputs: ensure consistent height & alignment with text inputs */
+  input[type="date"] {
+    min-height: 2.5rem;
+    line-height: 1.25;
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 /* Hide scrollbar on tab bar but keep scrolling */

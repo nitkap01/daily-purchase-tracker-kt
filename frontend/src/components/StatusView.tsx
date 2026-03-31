@@ -15,8 +15,10 @@ import {
 import { downloadBackup, getAppStatus, uploadRestore } from '../api'
 import type { AppStatus } from '../types'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined
+const GOOGLE_CLIENT_ID =
+  (window as any).__ENV__?.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID || undefined
+const GOOGLE_API_KEY =
+  (window as any).__ENV__?.VITE_GOOGLE_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY || undefined
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.file'
 
@@ -438,7 +440,7 @@ export default function StatusView() {
                 Google Drive integration requires{' '}
                 <code className="font-mono bg-amber-100 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> and{' '}
                 <code className="font-mono bg-amber-100 px-1 rounded">VITE_GOOGLE_API_KEY</code>{' '}
-                environment variables. Set them in <code className="font-mono bg-amber-100 px-1 rounded">.env</code> and restart.
+                environment variables. Set them in Portainer (container env) or <code className="font-mono bg-amber-100 px-1 rounded">.env</code> and restart.
               </p>
             </div>
           )}

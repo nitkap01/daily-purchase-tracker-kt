@@ -104,58 +104,62 @@ function DailyCashFlow({ entries }: { entries: CashEntry[] }) {
   const netCash = totalCredit - totalDebit
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Daily Cash Flow</p>
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+        <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-widest">Daily Cash Flow</p>
       </div>
-      <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate}
-            max={today()}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
+
+      {/* Date range filter */}
+      <div className="px-4 pt-3 space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1">From</label>
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1">To</label>
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate}
+              max={today()}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
         </div>
         <button
           onClick={() => { setFromDate(currentCycleStart()); setToDate(today()) }}
-          className="text-xs font-medium px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+          className="text-xs font-medium px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
         >
           This Cycle
         </button>
       </div>
 
       <div className="px-4 py-3 flex gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 bg-emerald-50 rounded-lg px-3 py-1.5">
-          <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="text-xs font-medium text-emerald-700">Credit ₹{fmtShort(totalCredit)}</span>
+        <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-1.5">
+          <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Credit ₹{fmtShort(totalCredit)}</span>
         </div>
-        <div className="flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-1.5">
-          <TrendingDown className="w-3.5 h-3.5 text-red-500" />
-          <span className="text-xs font-medium text-red-600">Debit ₹{fmtShort(totalDebit)}</span>
+        <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-1.5">
+          <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+          <span className="text-xs font-medium text-red-600 dark:text-red-300">Debit ₹{fmtShort(totalDebit)}</span>
         </div>
-        <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 ${netCash >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
-          <span className={`text-xs font-bold ${netCash >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+        <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 ${netCash >= 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+          <span className={`text-xs font-bold ${netCash >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'}`}>
             Net {netCash >= 0 ? '+' : ''}₹{fmtShort(netCash)}
           </span>
         </div>
       </div>
 
       {dailyData.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No entries for selected range</p>
+        <p className="text-xs text-gray-400 dark:text-slate-500 text-center py-6">No entries for selected range</p>
       ) : (
         <div className="px-4 pb-4">
           <ResponsiveContainer width="100%" height={200}>
